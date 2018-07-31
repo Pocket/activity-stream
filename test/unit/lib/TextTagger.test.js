@@ -3,13 +3,12 @@ import {TextTagger} from "lib/TextTagger.jsm";
 
 const EPSILON = 0.00001;
 
-describe("Text Tagger", () => {
+describe.only("Text Tagger", () => {
   let instance;
   let globals;
 
   beforeEach(() => {
     globals = new GlobalOverrider();
-    instance = new TextTagger();
   });
 
   afterEach(() => {
@@ -17,10 +16,13 @@ describe("Text Tagger", () => {
   });
 
   describe("#tokenize", () => {
+    instance = new TextTagger();
+
     let testCases = [
       {"input": "HELLO there", "expected": ["hello", "there"]},
       {"input": "blah,,,blah,blah", "expected": ["blah", "blah", "blah"]},
       {"input": "Call Jenny: 967-5809", "expected": ["call", "jenny", "967", "5809"]},
+      {"input": "Yo(what)[[hell]]{{jim}}}bob{1:2:1+2=$3", "expected": ["yo", "what", "hell", "jim", "bob", "1", "2", "1", "2", "3"]},
       {"input": "čÄfė 80's", "expected": ["čäfė", "80", "s"]},
       {"input": "我知道很多东西。", "expected": ["我知道很多东西"]}
     ];
@@ -34,6 +36,7 @@ describe("Text Tagger", () => {
   });
 
   describe("#tfidf", () => {
+    instance = new TextTagger();
     let vocab_idfs = {
       "deal":    [221, 5.5058519847862275],
       "easy":    [269, 5.5058519847862275],
@@ -78,14 +81,14 @@ describe("Text Tagger", () => {
       }
     ];
 
-    let checkTokGen = (actualTok, tc) => {
-      assert.isTrue(actualTok in tc);
+    let checkTokGen = (actual, actualTok, expected) => {
+      assert.isTrue(actualTok in expected);
     };
-    let checkTokId = (actualTok, actualId, tc) => {
-      assert.equal(tc.expected[actualTok][0], actualId);
+    let checkTokId = (actual, actualTok, expected) => {
+      assert.equal(expected[actualTok][0], actual[actualTok][0]);
     };
-    let checkTfIdf = (actualTok, actualTfIdf, tc) => {
-      let delta = Math.abs(tc.expected[actualTok][1] - actualTfIdf);
+    let checkTfIdf = (actual, actualTok, expected) => {
+      let delta = Math.abs(expected[actualTok][1] - actual[actualTok][1]);
       assert.isTrue(delta <= EPSILON);
     };
 
@@ -94,14 +97,14 @@ describe("Text Tagger", () => {
 
       // check the computed scores
       let seen = {};
-      actual.forEach((actualTok, actualValuePair, m) => {
-        it("should expect the token generated", checkTokGen(actualTok, testCases[i]));
-        it("should have the same token id", checkTokId(actualTok, actual[actualTok][0], testCases[i]));
-        it("should calculate the tf-idf within epsilon of expected", checkTfIdf(actualTok, actual[actualTok][0][1], testCases[i]));
+      Object.keys(actual).forEach(actualTok => {
+        it("should expect the token generated", checkTokGen(actual, actualTok, testCases[i].expected));
+        it("should have the same token id", checkTokId(actual, actualTok, testCases[i].expected));
+        it("should calculate the tf-idf within epsilon of expected", checkTfIdf(actual, actualTok, testCases[i].expected));
+        seen[actualTok] = true;
       });
-
       // make sure we didn"t miss anything
-      testCases[i].expected.forEach((expectedTok, expectedValuePair, m) => {
+      Object.keys(testCases[i].expected).forEach(expectedTok => {
         it("should not generate any extra tokens", () => {
           assert.isTrue(expectedTok in seen);
         });
