@@ -75,6 +75,10 @@ const PREFS_CONFIG = new Map([
     title: "Show sponsored cards in spoc experiment (show_spocs in topstories.options has to be set to true as well)",
     value: true
   }],
+  ["affinityProviderV2", {
+    title: "Switch how we generate spocs and recs to version 2.",
+    value: false
+  }],
   ["filterAdult", {
     title: "Remove adult pages from sites, highlights, etc.",
     value: true
