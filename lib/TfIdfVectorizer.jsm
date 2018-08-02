@@ -14,7 +14,7 @@ const UNICODE_LETTER = "A-Za-z\xAA\xB5\xBA\xC0-\xD6\xD8-\xF6\xF8-\u02C1\u02C6-\u
 const REGEXP_SPLITS = new RegExp(`[${UNICODE_SPACE}${UNICODE_SYMBOL}${UNICODE_PUNCT}]+`);
 const REGEXP_ALPHANUMS = new RegExp(`^[${UNICODE_NUMBER}${UNICODE_MARK}${UNICODE_LETTER}]+$`);
 
-this.TextTagger = class TextTagger {
+this.TfIdfVectorizer = class TfIdfVectorizer {
   /**
    * Downcases the text, and splits it into consecutive alphanumeric characters.
    * This is locale aware, and so will not strip accents. This uses "word
@@ -60,6 +60,8 @@ this.TextTagger = class TextTagger {
 
     return tfidfs;
   }
+
+
 };
 
-const EXPORTED_SYMBOLS = ["TextTagger"];
+const EXPORTED_SYMBOLS = ["TfIdfVectorizer"];

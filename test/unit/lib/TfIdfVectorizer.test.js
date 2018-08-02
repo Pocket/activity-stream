@@ -1,10 +1,10 @@
-import {TextTagger} from "lib/TextTagger.jsm";
+import {TfIdfVectorizer} from "lib/TfIdfVectorizer.jsm";
 
 const EPSILON = 0.00001;
 
-describe.only("User Domain Affinity Provider", () => {
+describe("TF-IDF Term Vectorizer", () => {
   describe("#tokenize", () => {
-    let instance = new TextTagger();
+    let instance = new TfIdfVectorizer();
     let testCases = [
       {"input": "HELLO there", "expected": ["hello", "there"]},
       {"input": "blah,,,blah,blah", "expected": ["blah", "blah", "blah"]},
@@ -25,7 +25,7 @@ describe.only("User Domain Affinity Provider", () => {
   });
 
   describe("#tfidf", () => {
-    let instance = new TextTagger();
+    let instance = new TfIdfVectorizer();
     let vocab_idfs = {
       "deal":    [221, 5.5058519847862275],
       "easy":    [269, 5.5058519847862275],
@@ -106,4 +106,6 @@ describe.only("User Domain Affinity Provider", () => {
       checkTfIdfVector(testCases[i]);
     }
   });
+
+
 });
