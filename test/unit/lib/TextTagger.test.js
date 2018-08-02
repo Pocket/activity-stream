@@ -1,42 +1,31 @@
-import {GlobalOverrider} from "test/unit/utils";
 import {TextTagger} from "lib/TextTagger.jsm";
 
 const EPSILON = 0.00001;
 
-describe.only("Text Tagger", () => {
-  let instance;
-  let globals;
-
-  beforeEach(() => {
-    globals = new GlobalOverrider();
-  });
-
-  afterEach(() => {
-    globals.restore();
-  });
-
+describe.only("User Domain Affinity Provider", () => {
   describe("#tokenize", () => {
-    instance = new TextTagger();
-
+    let instance = new TextTagger();
     let testCases = [
       {"input": "HELLO there", "expected": ["hello", "there"]},
       {"input": "blah,,,blah,blah", "expected": ["blah", "blah", "blah"]},
-      {"input": "Call Jenny: 967-5809", "expected": ["call", "jenny", "967", "5809"]},
+      {"input": "Call Jenny: 967-5309", "expected": ["call", "jenny", "967", "5309"]},
       {"input": "Yo(what)[[hell]]{{jim}}}bob{1:2:1+2=$3", "expected": ["yo", "what", "hell", "jim", "bob", "1", "2", "1", "2", "3"]},
       {"input": "čÄfė 80's", "expected": ["čäfė", "80", "s"]},
       {"input": "我知道很多东西。", "expected": ["我知道很多东西"]}
     ];
-
-    let x = tc => {
-      assert.deepEqual(tc.expected, instance.tokenize(tc.input));
+    let checkTokenization = tc => {
+      it(`${tc.input} should tokenize to ${tc.expected}`, () => {
+        assert.deepEqual(tc.expected, instance.tokenize(tc.input));
+      });
     };
+
     for (let i = 0; i < testCases.length; i++) {
-      it("should have the proper tokenization", x(testCases[i]));
+      checkTokenization(testCases[i]);
     }
   });
 
   describe("#tfidf", () => {
-    instance = new TextTagger();
+    let instance = new TextTagger();
     let vocab_idfs = {
       "deal":    [221, 5.5058519847862275],
       "easy":    [269, 5.5058519847862275],
@@ -46,7 +35,6 @@ describe.only("Text Tagger", () => {
       "needs":   [596, 5.8243057159047620],
       "finally": [334, 5.7065226802483790]
     };
-
     let testCases = [
       {
         "input": "Finally! Easy care for your tanks!",
@@ -80,35 +68,42 @@ describe.only("Text Tagger", () => {
         "expected": { /* This space is left intentionally blank. */ }
       }
     ];
+    let checkTokenGeneration = tc => {
+      describe(`${tc.input} should have only vocabulary tokens`, () => {
+        let actual = instance.tfidf_vector(instance.tokenize(tc.input), vocab_idfs);
 
-    let checkTokGen = (actual, actualTok, expected) => {
-      assert.isTrue(actualTok in expected);
+        it(`${tc.input} should generate exactly ${Object.keys(tc.expected)}`, () => {
+          let seen = {};
+          Object.keys(actual).forEach(actualTok => {
+            assert.isTrue(actualTok in tc.expected);
+            seen[actualTok] = true;
+          });
+          Object.keys(tc.expected).forEach(expectedTok => {
+            assert.isTrue(expectedTok in seen);
+          });
+        });
+
+        it(`${tc.input} should have the correct token ids`, () => {
+          Object.keys(actual).forEach(actualTok => {
+            assert.equal(tc.expected[actualTok][0], actual[actualTok][0]);
+          });
+        });
+      });
     };
-    let checkTokId = (actual, actualTok, expected) => {
-      assert.equal(expected[actualTok][0], actual[actualTok][0]);
-    };
-    let checkTfIdf = (actual, actualTok, expected) => {
-      let delta = Math.abs(expected[actualTok][1] - actual[actualTok][1]);
-      assert.isTrue(delta <= EPSILON);
+
+    let checkTfIdfVector = tc => {
+      let actual = instance.tfidf_vector(instance.tokenize(tc.input), vocab_idfs);
+      it(`${tc.input} should have the correct tf-idf`, () => {
+        Object.keys(actual).forEach(actualTok => {
+          let delta = Math.abs(tc.expected[actualTok][1] - actual[actualTok][1]);
+          assert.isTrue(delta <= EPSILON);
+        });
+      });
     };
 
     for (let i = 0; i < testCases.length; i++) {
-      let actual = instance.tfidf_vector(instance.tokenize(testCases[i].input), vocab_idfs);
-
-      // check the computed scores
-      let seen = {};
-      Object.keys(actual).forEach(actualTok => {
-        it("should expect the token generated", checkTokGen(actual, actualTok, testCases[i].expected));
-        it("should have the same token id", checkTokId(actual, actualTok, testCases[i].expected));
-        it("should calculate the tf-idf within epsilon of expected", checkTfIdf(actual, actualTok, testCases[i].expected));
-        seen[actualTok] = true;
-      });
-      // make sure we didn"t miss anything
-      Object.keys(testCases[i].expected).forEach(expectedTok => {
-        it("should not generate any extra tokens", () => {
-          assert.isTrue(expectedTok in seen);
-        });
-      });
+      checkTokenGeneration(testCases[i]);
+      checkTfIdfVector(testCases[i]);
     }
   });
 });
