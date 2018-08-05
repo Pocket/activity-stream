@@ -9,7 +9,7 @@ describe("Naive Bayes Tagger", () => {
       "model_type": "nb",
       "positive_class_label": "military",
       "positive_class_id": 0,
-      "postive_class_threshold_log_prob": -0.5108256237659907,
+      "positive_class_threshold_log_prob": -0.5108256237659907,
       "classes": [
         {
           "log_prior": -0.6881346387364013,

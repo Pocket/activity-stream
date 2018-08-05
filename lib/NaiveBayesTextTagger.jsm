@@ -52,7 +52,7 @@ this.NaiveBayesTextTagger = class NaiveBayesTextTagger {
     }
 
     let confident = ((bestClassId === this.model.positive_class_id) &&
-                      (bestLogProb > this.model.postive_class_threshold_log_prob));
+                      (bestLogProb > this.model.positive_class_threshold_log_prob));
     return {
       "label": bestClassLabel,
       "logProb": bestLogProb,
