@@ -3,7 +3,7 @@ import {TfIdfVectorizer} from "lib/TfIdfVectorizer.jsm";
 
 const EPSILON = 0.00001;
 
-describe.only("Naive Bayes Tagger", () => {
+describe("Naive Bayes Tagger", () => {
   describe("#tag", () => {
     let model = {
       "model_type": "nb",
