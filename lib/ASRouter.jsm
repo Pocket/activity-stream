@@ -5,12 +5,15 @@
 
 ChromeUtils.import("resource://gre/modules/Services.jsm");
 ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+ChromeUtils.import("resource://gre/modules/AddonManager.jsm");
 XPCOMUtils.defineLazyGlobalGetters(this, ["fetch"]);
-const {ASRouterActions: ra} = ChromeUtils.import("resource://activity-stream/common/Actions.jsm", {});
+const {ASRouterActions: ra, actionCreators: ac} = ChromeUtils.import("resource://activity-stream/common/Actions.jsm", {});
 const {OnboardingMessageProvider} = ChromeUtils.import("resource://activity-stream/lib/OnboardingMessageProvider.jsm", {});
 
 ChromeUtils.defineModuleGetter(this, "ASRouterTargeting",
   "resource://activity-stream/lib/ASRouterTargeting.jsm");
+ChromeUtils.defineModuleGetter(this, "ASRouterTriggerListeners",
+  "resource://activity-stream/lib/ASRouterTriggerListeners.jsm");
 
 const INCOMING_MESSAGE_NAME = "ASRouter:child-to-parent";
 const OUTGOING_MESSAGE_NAME = "ASRouter:parent-to-child";
@@ -18,10 +21,11 @@ const ONE_HOUR_IN_MS = 60 * 60 * 1000;
 const SNIPPETS_ENDPOINT_PREF = "browser.newtabpage.activity-stream.asrouter.snippetsUrl";
 // List of hosts for endpoints that serve router messages.
 // Key is allowed host, value is a name for the endpoint host.
-const WHITELIST_HOSTS = {
+const DEFAULT_WHITELIST_HOSTS = {
   "activity-stream-icons.services.mozilla.com": "production",
   "snippets-admin.mozilla.org": "preview"
 };
+const SNIPPETS_ENDPOINT_WHITELIST = "browser.newtab.activity-stream.asrouter.whitelistHosts";
 
 const MessageLoaderUtils = {
   /**
@@ -104,6 +108,16 @@ const MessageLoaderUtils = {
         .map(msg => ({...msg, provider: provider.id}));
     const lastUpdated = Date.now();
     return {messages, lastUpdated};
+  },
+
+  async installAddonFromURL(browser, url) {
+    try {
+      const aUri = Services.io.newURI(url);
+      const systemPrincipal = Services.scriptSecurityManager.getSystemPrincipal();
+      const install = await AddonManager.getInstallForURL(aUri.spec, "application/x-xpinstall");
+      await AddonManager.installAddonFromWebpage("application/x-xpinstall", browser,
+        systemPrincipal, install);
+    } catch (e) {}
   }
 };
 
@@ -121,6 +135,7 @@ class _ASRouter {
   constructor(initialState = {}) {
     this.initialized = false;
     this.messageChannel = null;
+    this.dispatchToAS = null;
     this._storage = null;
     this._resetInitialization();
     this._state = {
@@ -131,7 +146,9 @@ class _ASRouter {
       messages: [],
       ...initialState
     };
+    this._triggerHandler = this._triggerHandler.bind(this);
     this.onMessage = this.onMessage.bind(this);
+    this._handleTargetingError = this._handleTargetingError.bind(this);
   }
 
   _addASRouterPrefListener() {
@@ -211,7 +228,23 @@ class _ASRouter {
           newState.messages = [...newState.messages, ...messages];
         }
       }
-      await this.setState(newState);
+
+      // Some messages have triggers that require us to initalise trigger listeners
+      const unseenListeners = new Set(ASRouterTriggerListeners.keys());
+      for (const {trigger} of newState.messages) {
+        if (trigger && ASRouterTriggerListeners.has(trigger.id)) {
+          ASRouterTriggerListeners.get(trigger.id).init(this._triggerHandler, trigger.params);
+          unseenListeners.delete(trigger.id);
+        }
+      }
+      // We don't need these listeners, but they may have previously been
+      // initialised, so uninitialise them
+      for (const triggerID of unseenListeners) {
+        ASRouterTriggerListeners.get(triggerID).uninit();
+      }
+
+      // We don't want to cache preview endpoints, remove them after messages are fetched
+      await this.setState(this._removePreviewEndpoint(newState));
       await this.cleanupImpressions();
     }
   }
@@ -222,13 +255,16 @@ class _ASRouter {
    *
    * @param {RemotePageManager} channel a RemotePageManager instance
    * @param {obj} storage an AS storage instance
+   * @param {func} dispatchToAS dispatch an action the main AS Store
    * @memberof _ASRouter
    */
-  async init(channel, storage) {
+  async init(channel, storage, dispatchToAS) {
     this.messageChannel = channel;
     this.messageChannel.addMessageListener(INCOMING_MESSAGE_NAME, this.onMessage);
     this._addASRouterPrefListener();
     this._storage = storage;
+    this.WHITELIST_HOSTS = this._loadSnippetsWhitelistHosts();
+    this.dispatchToAS = dispatchToAS;
 
     const blockList = await this._storage.get("blockList") || [];
     const impressions = await this._storage.get("impressions") || {};
@@ -243,11 +279,16 @@ class _ASRouter {
     this.messageChannel.sendAsyncMessage(OUTGOING_MESSAGE_NAME, {type: "CLEAR_ALL"});
     this.messageChannel.removeMessageListener(INCOMING_MESSAGE_NAME, this.onMessage);
     this.messageChannel = null;
+    this.dispatchToAS = null;
     this.state.providers.forEach(provider => {
       if (provider.endpointPref) {
         Services.prefs.removeObserver(provider.endpointPref, this);
       }
     });
+    // Uninitialise all trigger listeners
+    for (const listener of ASRouterTriggerListeners.values()) {
+      listener.uninit();
+    }
     this._resetInitialization();
   }
 
@@ -268,23 +309,32 @@ class _ASRouter {
     this.messageChannel.sendAsyncMessage(OUTGOING_MESSAGE_NAME, {type: "ADMIN_SET_STATE", data: state});
   }
 
-  async _findMessage(messages, target, data = {}) {
-    let message;
-    const {trigger} = data;
-    const {impressions} = this.state;
-    if (trigger) {
-      // Find a message that matches the targeting context as well as the trigger context
-      message = await ASRouterTargeting.findMatchingMessageWithTrigger({messages, impressions, target, trigger});
+  _handleTargetingError(type, error, message) {
+    Cu.reportError(error);
+    if (this.dispatchToAS) {
+      this.dispatchToAS(ac.ASRouterUserEvent({
+        message_id: message.id,
+        action: "asrouter_undesired_event",
+        event: "TARGETING_EXPRESSION_ERROR",
+        value: type
+      }));
     }
-    if (!message) {
-      // If there was no messages with this trigger, try finding a regular targeted message
-      message = await ASRouterTargeting.findMatchingMessage({messages, impressions, target});
-    }
-    return message;
   }
 
-  async _getBundledMessages(originalMessage, target, data, force = false) {
-    let result = [{content: originalMessage.content, id: originalMessage.id}];
+  _findMessage(messages, target, trigger) {
+    const {impressions} = this.state;
+
+     // Find a message that matches the targeting context as well as the trigger context (if one is provided)
+     // If no trigger is provided, we should find a message WITHOUT a trigger property defined.
+    return ASRouterTargeting.findMatchingMessage({messages, impressions, trigger, onError: this._handleTargetingError});
+  }
+
+  _orderBundle(bundle) {
+    return bundle.sort((a, b) => a.order - b.order);
+  }
+
+  async _getBundledMessages(originalMessage, target, trigger, force = false) {
+    let result = [{content: originalMessage.content, id: originalMessage.id, order: originalMessage.order || 0}];
 
     // First, find all messages of same template. These are potential matching targeting candidates
     let bundledMessagesOfSameTemplate = this._getUnblockedMessages()
@@ -302,14 +352,14 @@ class _ASRouter {
     } else {
       while (bundledMessagesOfSameTemplate.length) {
         // Find a message that matches the targeting context - or break if there are no matching messages
-        const message = await this._findMessage(bundledMessagesOfSameTemplate, target, data);
+        const message = await this._findMessage(bundledMessagesOfSameTemplate, target, trigger);
         if (!message) {
           /* istanbul ignore next */ // Code coverage in mochitests
           break;
         }
         // Only copy the content of the message (that's what the UI cares about)
         // Also delete the message we picked so we don't pick it again
-        result.push({content: message.content, id: message.id});
+        result.push({content: message.content, id: message.id, order: message.order || 0});
         bundledMessagesOfSameTemplate.splice(bundledMessagesOfSameTemplate.findIndex(msg => msg.id === message.id), 1);
         // Stop once we have enough messages to fill a bundle
         if (result.length === originalMessage.bundled) {
@@ -322,7 +372,8 @@ class _ASRouter {
     if (result.length < originalMessage.bundled) {
       return null;
     }
-    return {bundle: result, provider: originalMessage.provider, template: originalMessage.template};
+
+    return {bundle: this._orderBundle(result), provider: originalMessage.provider, template: originalMessage.template};
   }
 
   _getUnblockedMessages() {
@@ -330,11 +381,11 @@ class _ASRouter {
     return state.messages.filter(item => !state.blockList.includes(item.id));
   }
 
-  async _sendMessageToTarget(message, target, data, force = false) {
+  async _sendMessageToTarget(message, target, trigger, force = false) {
     let bundledMessages;
     // If this message needs to be bundled with other messages of the same template, find them and bundle them together
     if (message && message.bundled) {
-      bundledMessages = await this._getBundledMessages(message, target, data, force);
+      bundledMessages = await this._getBundledMessages(message, target, trigger, force);
     }
     if (message && !message.bundled) {
       // If we only need to send 1 message, send the message
@@ -416,8 +467,7 @@ class _ASRouter {
     });
   }
 
-  async sendNextMessage(target, action = {}) {
-    let {data} = action;
+  async sendNextMessage(target, trigger) {
     const msgs = this._getUnblockedMessages();
     let message = null;
     const previewMsgs = this.state.messages.filter(item => item.provider === "preview");
@@ -425,11 +475,19 @@ class _ASRouter {
     if (previewMsgs.length) {
       [message] = previewMsgs;
     } else {
-      message = await this._findMessage(msgs, target, data);
+      message = await this._findMessage(msgs, target, trigger);
     }
 
-    await this.setState({lastMessageId: message ? message.id : null});
-    await this._sendMessageToTarget(message, target, data);
+    if (previewMsgs.length) {
+      // We don't want to cache preview messages, remove them after we selected the message to show
+      await this.setState(state => ({
+        lastMessageId: message.id,
+        messages: state.messages.filter(m => m.id !== message.id)
+      }));
+    } else {
+      await this.setState({lastMessageId: message ? message.id : null});
+    }
+    await this._sendMessageToTarget(message, target, trigger);
   }
 
   async setMessageById(id, target, force = true, action = {}) {
@@ -468,22 +526,55 @@ class _ASRouter {
   _validPreviewEndpoint(url) {
     try {
       const endpoint = new URL(url);
-      if (!WHITELIST_HOSTS[endpoint.host]) {
+      if (!this.WHITELIST_HOSTS[endpoint.host]) {
         Cu.reportError(`The preview URL host ${endpoint.host} is not in the whitelist.`);
       }
       if (endpoint.protocol !== "https:") {
         Cu.reportError("The URL protocol is not https.");
       }
-      return (endpoint.protocol === "https:" && WHITELIST_HOSTS[endpoint.host]);
+      return (endpoint.protocol === "https:" && this.WHITELIST_HOSTS[endpoint.host]);
     } catch (e) {
       return false;
     }
   }
 
+  _loadSnippetsWhitelistHosts() {
+    let additionalHosts = [];
+    const whitelistPrefValue = Services.prefs.getStringPref(SNIPPETS_ENDPOINT_WHITELIST, "");
+    try {
+      additionalHosts = JSON.parse(whitelistPrefValue);
+    } catch (e) {
+      if (whitelistPrefValue) {
+        Cu.reportError(`Pref ${SNIPPETS_ENDPOINT_WHITELIST} value is not valid JSON`);
+      }
+    }
+
+    if (!additionalHosts.length) {
+      return DEFAULT_WHITELIST_HOSTS;
+    }
+
+    // If there are additional hosts we want to whitelist, add them as
+    // `preview` so that the updateCycle is 0
+    return additionalHosts.reduce((whitelist_hosts, host) => {
+      whitelist_hosts[host] = "preview";
+      Services.console.logStringMessage(`Adding ${host} to whitelist hosts.`);
+      return whitelist_hosts;
+    }, {...DEFAULT_WHITELIST_HOSTS});
+  }
+
+  // To be passed to ASRouterTriggerListeners
+  async _triggerHandler(target, trigger) {
+    await this.onMessage({target, data: {type: "TRIGGER", trigger}});
+  }
+
+  _removePreviewEndpoint(state) {
+    state.providers = state.providers.filter(p => p.id !== "preview");
+    return state;
+  }
+
   async _addPreviewEndpoint(url) {
     const providers = [...this.state.providers];
     if (this._validPreviewEndpoint(url) && !providers.find(p => p.url === url)) {
-      // Set update cycle to 0 to fetch new content on every page refresh
       providers.push({id: "preview", type: "remote", url, updateCycleInMs: 0});
       await this.setState({providers});
     }
@@ -501,7 +592,7 @@ class _ASRouter {
         }
         // Check if any updates are needed first
         await this.loadMessagesFromAllProviders();
-        await this.sendNextMessage(target, action);
+        await this.sendNextMessage(target, (action.data && action.data.trigger) || {});
         break;
       case ra.OPEN_PRIVATE_BROWSER_WINDOW:
         // Forcefully open about:privatebrowsing
@@ -552,6 +643,9 @@ class _ASRouter {
         break;
       case "IMPRESSION":
         this.addImpression(action.data);
+        break;
+      case ra.INSTALL_ADDON_FROM_URL:
+        await MessageLoaderUtils.installAddonFromURL(target.browser, action.data.url);
         break;
     }
   }
