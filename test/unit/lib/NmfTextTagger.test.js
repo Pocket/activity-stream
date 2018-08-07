@@ -98,7 +98,7 @@ describe("NMF Tagger", () => {
 
     let checkTag = tc => {
       let actual = instance.tag(tc.input);
-      it(`${tc.input} should have correct scores`, () => {
+      it(`should score ${tc.input} correctly`, () => {
         Object.keys(actual).forEach(tag => {
           let delta = Math.abs(tc.expected[tag] - actual[tag]);
           assert.isTrue(delta <= EPSILON);

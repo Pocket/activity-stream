@@ -89,10 +89,10 @@ describe("Naive Bayes Tagger", () => {
 
     let checkTag = tc => {
       let actual = instance.tag(tc.input);
-      it(`${tc.input} should be tagged ${tc.expected.label}`, () => {
+      it(`should tag ${tc.input} with ${tc.expected.label}`, () => {
         assert.equal(tc.expected.label, actual.label);
       });
-      it(`${tc.input} should have correct probability`, () => {
+      it(`should give ${tc.input} the correct probability`, () => {
         let delta = Math.abs(tc.expected.logProb - actual.logProb);
         assert.isTrue(delta <= EPSILON);
       });

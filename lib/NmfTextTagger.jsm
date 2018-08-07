@@ -10,11 +10,11 @@ this.NmfTextTagger = class NmfTextTagger {
   }
 
   /**
-   * Determines if the text belongs to class according to binary naive Bayes
-   * classifier. Returns an object containing the class label ("label"), and
-   * the log probability ("logProb") that the text belongs to that class. If
-   * the positive class is more likely, then "label" is the positive class
-   * label. If the negative class is matched, then "label" is set to null.
+   * A multiclass classifier that scores text against several classes through
+   * inference of a nonnegative matrix factorization of TF-IDF vectors and
+   * class labels. Returns a map of class labels as string keys to scores.
+   * (Higher is more confident.) All classes get scored, so it is up to
+   * consumer of this data determine what classes are most valuable.
    */
   tag(text) {
     let fv = this.tokenizer.getTfIdfVector(text, this.model.vocab_idfs);
