@@ -482,6 +482,65 @@ describe("Top Stories Feed", () => {
       // Should remove impressions for rec 1 and 2 as no longer in the feed
       assert.calledWith(instance._prefs.set.firstCall, REC_IMPRESSION_TRACKING_PREF, JSON.stringify({3: 1}));
     });
+    it("should re init and update affinity provider version on affinityProviderV2 pref change", async () => {
+      sinon.stub(instance, "uninit");
+      sinon.stub(instance, "init");
+      instance.onAction({type: at.PREF_CHANGED, data: {name: "affinityProviderV2", value: true}});
+      assert.equal(instance.affinityProviderV2, true);
+      assert.calledOnce(instance.uninit);
+      assert.calledOnce(instance.init);
+    });
+    it("should call affinityProividerSwitcher on loadCachedData", async () => {
+      instance.affinityProviderV2 = true;
+      instance.personalized = true;
+      sinon.stub(instance, "affinityProividerSwitcher");
+      const domainAffinities = {
+        "parameterSets": {
+          "default": {
+            "recencyFactor": 0.4,
+            "frequencyFactor": 0.5,
+            "combinedDomainFactor": 0.5,
+            "perfectFrequencyVisits": 10,
+            "perfectCombinedDomainScore": 2,
+            "multiDomainBoost": 0.1,
+            "itemScoreFactor": 0
+          }
+        },
+        "scores": {"a.com": 1, "b.com": 0.9},
+        "maxHistoryQueryResults": 1000,
+        "timeSegments": {},
+        "version": "v1"
+      };
+
+      instance.cache.get = () => ({domainAffinities});
+      await instance.loadCachedData();
+      assert.calledOnce(instance.affinityProividerSwitcher);
+    });
+    it("should change domainAffinitiesLastUpdated on loadCachedData", async () => {
+      instance.affinityProviderV2 = true;
+      instance.personalized = true;
+      const domainAffinities = {
+        "parameterSets": {
+          "default": {
+            "recencyFactor": 0.4,
+            "frequencyFactor": 0.5,
+            "combinedDomainFactor": 0.5,
+            "perfectFrequencyVisits": 10,
+            "perfectCombinedDomainScore": 2,
+            "multiDomainBoost": 0.1,
+            "itemScoreFactor": 0
+          }
+        },
+        "scores": {"a.com": 1, "b.com": 0.9},
+        "maxHistoryQueryResults": 1000,
+        "timeSegments": {},
+        "version": "v1"
+      };
+
+      instance.cache.get = () => ({domainAffinities});
+      await instance.loadCachedData();
+      assert.notEqual(instance.domainAffinitiesLastUpdated, 0);
+    });
   });
   describe("#spocs", async () => {
     it("should insert spoc with provided probability", async () => {
