@@ -7,10 +7,10 @@ const {UserDomainAffinityProvider} = ChromeUtils.import("resource://activity-str
 const {PersistentCache} = ChromeUtils.import("resource://activity-stream/lib/PersistentCache.jsm", {});
 const {RemoteSettings} = ChromeUtils.import("resource://services-settings/remote-settings.js", {});
 
-//const {NaiveBayesTextTagger} = ChromeUtils.import("resource://activity-stream/lib/NaiveBayesTextTagger.jsm", {});
-//const {NmfTextTagger} = ChromeUtils.import("resource://activity-stream/lib/NmfTextTagger.jsm", {});
-//const {TfIdfVectorizer} = ChromeUtils.import("resource://activity-stream/lib/TfIdfVectorizer.jsm", {});
-//const {RecipeExecutor} = ChromeUtils.import("resource://activity-stream/lib/RecipeExecutor.jsm", {});
+// const {NaiveBayesTextTagger} = ChromeUtils.import("resource://activity-stream/lib/NaiveBayesTextTagger.jsm", {});
+// const {NmfTextTagger} = ChromeUtils.import("resource://activity-stream/lib/NmfTextTagger.jsm", {});
+// const {TfIdfVectorizer} = ChromeUtils.import("resource://activity-stream/lib/TfIdfVectorizer.jsm", {});
+// const {RecipeExecutor} = ChromeUtils.import("resource://activity-stream/lib/RecipeExecutor.jsm", {});
 
 const NaiveBayesTextTagger = () => {};
 const NmfTextTagger = () => {};
@@ -73,11 +73,14 @@ this.PersonalityProvider = class PersonalityProvider extends UserDomainAffinityP
       throw new Error(`Personality provider received unexpected model for generate tagger: ${modelType}`);
     }
 
-    if (modelType == "nb") {
-      return new NaiveBayesTextTagger(this.nbModel, new TfIdfVectorizer());
-    } else if (modelType == "nmf") {
-      return new NmfTextTagger(this.nmfModel, new TfIdfVectorizer());
+    let textTagger;
+
+    if (modelType === "nb") {
+      textTagger = new NaiveBayesTextTagger(this.nbModel, new TfIdfVectorizer());
+    } else if (modelType === "nmf") {
+      textTagger = new NmfTextTagger(this.nmfModel, new TfIdfVectorizer());
     }
+    return textTagger;
   }
 
   /**
