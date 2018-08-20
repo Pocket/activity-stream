@@ -27,6 +27,7 @@ const DEFAULT_WHITELIST_HOSTS = {
 const SNIPPETS_ENDPOINT_WHITELIST = "browser.newtab.activity-stream.asrouter.whitelistHosts";
 
 const LOCAL_MESSAGE_PROVIDERS = {OnboardingMessageProvider};
+const STARTPAGE_VERSION = "0.1.0";
 
 const MessageLoaderUtils = {
   /**
@@ -179,6 +180,10 @@ class _ASRouter {
         // Get the messages from the local message provider
         const localProvider = this._localProviders[provider.localProvider];
         provider.messages = localProvider ? localProvider.getMessages() : [];
+      }
+      if (provider.type === "remote" && provider.url) {
+        provider.url = provider.url.replace(/%STARTPAGE_VERSION%/g, STARTPAGE_VERSION);
+        provider.url = Services.urlFormatter.formatURL(provider.url);
       }
       // Reset provider update timestamp to force message refresh
       provider.lastUpdated = undefined;
@@ -608,10 +613,10 @@ class _ASRouter {
         target.browser.ownerGlobal.OpenBrowserWindow({private: true});
         break;
       case ra.OPEN_URL:
-        this.openLinkIn(action.data.button_action_params, target, {isPrivate: false, where: "tabshifted"});
+        this.openLinkIn(action.data.url, target, {isPrivate: false, where: "tabshifted"});
         break;
       case ra.OPEN_ABOUT_PAGE:
-        this.openLinkIn(`about:${action.data.button_action_params}`, target, {isPrivate: false, trusted: true, where: "tab"});
+        this.openLinkIn(`about:${action.data.page}`, target, {isPrivate: false, trusted: true, where: "tab"});
         break;
       case "BLOCK_MESSAGE_BY_ID":
         await this.blockById(action.data.id);

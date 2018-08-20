@@ -10,6 +10,7 @@ import {
   PARENT_TO_CHILD_MESSAGE_NAME
 } from "./constants";
 import {ASRouterTriggerListeners} from "lib/ASRouterTriggerListeners.jsm";
+import ProviderResponseSchema from "content-src/asrouter/schemas/provider-response.schema.json";
 
 const MESSAGE_PROVIDER_PREF_NAME = "browser.newtabpage.activity-stream.asrouter.messageProviders";
 const FAKE_PROVIDERS = [FAKE_LOCAL_PROVIDER, FAKE_REMOTE_PROVIDER];
@@ -129,7 +130,7 @@ describe("ASRouter", () => {
 
       assert.calledOnce(Router.loadMessagesFromAllProviders);
     });
-    it("should update provider on pref change", async () => {
+    it("should update the list of providers on pref change", async () => {
       const modifiedRemoteProvider = Object.assign({}, FAKE_REMOTE_PROVIDER, {url: "baz.com"});
       setMessageProviderPref([FAKE_LOCAL_PROVIDER, modifiedRemoteProvider]);
 
@@ -229,6 +230,31 @@ describe("ASRouter", () => {
         Router._triggerHandler, ["www.mozilla.org", "www.mozilla.com"]);
       assert.calledWithExactly(ASRouterTriggerListeners.get("openURL").init,
         Router._triggerHandler, ["www.example.com"]);
+    });
+  });
+
+  describe("#_updateMessageProviders", () => {
+    it("should correctly replace %STARTPAGE_VERSION% in remote provider urls", () => {
+      // If this test fails, you need to update the constant STARTPAGE_VERSION in
+      // ASRouter.jsm to match the `version` property of provider-response-schema.json
+      const expectedStartpageVersion = ProviderResponseSchema.version;
+      const provider = {id: "foo", type: "remote", url: "https://www.mozilla.org/%STARTPAGE_VERSION%/"};
+      setMessageProviderPref([provider]);
+      Router._updateMessageProviders();
+      assert.equal(Router.state.providers[0].url, `https://www.mozilla.org/${expectedStartpageVersion}/`);
+    });
+    it("should replace other params in remote provider urls by calling Services.urlFormater.formatURL", () => {
+      const url = "https://www.example.com/";
+      const replacedUrl = "https://www.foo.bar/";
+      const stub = sandbox.stub(global.Services.urlFormatter, "formatURL")
+        .withArgs(url)
+        .returns(replacedUrl);
+      const provider = {id: "foo", type: "remote", url};
+      setMessageProviderPref([provider]);
+      Router._updateMessageProviders();
+      assert.calledOnce(stub);
+      assert.calledWithExactly(stub, url);
+      assert.equal(Router.state.providers[0].url, replacedUrl);
     });
   });
 
@@ -571,21 +597,21 @@ describe("ASRouter", () => {
     it("should call openLinkIn with the correct params on OPEN_URL", async () => {
       sinon.spy(Router, "openLinkIn");
       let [testMessage] = Router.state.messages;
-      testMessage.button_action_params = "some/url.com";
-      const msg = fakeAsyncMessage({type: "OPEN_URL", data: testMessage});
+      testMessage.button_action = {type: "OPEN_URL", data: {url: "some/url.com"}};
+      const msg = fakeAsyncMessage(testMessage.button_action);
       await Router.onMessage(msg);
 
-      assert.calledWith(Router.openLinkIn, testMessage.button_action_params, msg.target, {isPrivate: false, where: "tabshifted"});
+      assert.calledWith(Router.openLinkIn, "some/url.com", msg.target, {isPrivate: false, where: "tabshifted"});
       assert.calledOnce(msg.target.browser.ownerGlobal.openLinkIn);
     });
     it("should call openLinkIn with the correct params on OPEN_ABOUT_PAGE", async () => {
       sinon.spy(Router, "openLinkIn");
       let [testMessage] = Router.state.messages;
-      testMessage.button_action_params = "something";
-      const msg = fakeAsyncMessage({type: "OPEN_ABOUT_PAGE", data: testMessage});
+      testMessage.button_action = {type: "OPEN_ABOUT_PAGE", data: {page: "something"}};
+      const msg = fakeAsyncMessage(testMessage.button_action);
       await Router.onMessage(msg);
 
-      assert.calledWith(Router.openLinkIn, `about:${testMessage.button_action_params}`, msg.target, {isPrivate: false, trusted: true, where: "tab"});
+      assert.calledWith(Router.openLinkIn, `about:something`, msg.target, {isPrivate: false, trusted: true, where: "tab"});
       assert.calledOnce(msg.target.browser.ownerGlobal.openTrustedLinkIn);
     });
   });

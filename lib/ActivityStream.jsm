@@ -77,6 +77,10 @@ const PREFS_CONFIG = new Map([
     title: "Show sponsored cards in spoc experiment (show_spocs in topstories.options has to be set to true as well)",
     value: true
   }],
+  ["affinityProviderV2", {
+    title: "Switch how we generate spocs and recs to version 2.",
+    value: false
+  }],
   ["filterAdult", {
     title: "Remove adult pages from sites, highlights, etc.",
     value: true
@@ -157,11 +161,36 @@ const PREFS_CONFIG = new Map([
   }],
   ["improvesearch.noDefaultSearchTile", {
     title: "Experiment to remove tiles that are the same as the default search",
-    value: true
+    value: AppConstants.MOZ_UPDATE_CHANNEL !== "release"
   }],
   ["improvesearch.topSiteSearchShortcuts", {
     title: "Experiment to show special top sites that perform keyword searches",
-    value: true
+    value: AppConstants.MOZ_UPDATE_CHANNEL !== "release"
+  }],
+  ["improvesearch.topSiteSearchShortcuts.searchEngines", {
+    title: "An ordered, comma-delimited list of search shortcuts that we should try and pin",
+    // This pref is dynamic as the shortcuts vary depending on the region
+    getValue: ({geo}) => {
+      if (!geo) {
+        return "";
+      }
+      const searchShortcuts = [];
+      if (geo === "CN") {
+        searchShortcuts.push("baidu");
+      } else if (["BY", "KZ", "RU", "TR"].includes(geo)) {
+        searchShortcuts.push("yandex");
+      } else {
+        searchShortcuts.push("google");
+      }
+      if (["DE", "FR", "GB", "IT", "JP", "US"].includes(geo)) {
+        searchShortcuts.push("amazon");
+      }
+      return searchShortcuts.join(",");
+    }
+  }],
+  ["improvesearch.topSiteSearchShortcuts.havePinned", {
+    title: "A comma-delimited list of search shortcuts that have previously been pinned",
+    value: ""
   }],
   ["asrouterExperimentEnabled", {
     title: "Is the message center experiment on?",
