@@ -9,7 +9,6 @@ const {RemoteSettings} = ChromeUtils.import("resource://services-settings/remote
 
 const {NaiveBayesTextTagger} = ChromeUtils.import("resource://activity-stream/lib/NaiveBayesTextTagger.jsm", {});
 const {NmfTextTagger} = ChromeUtils.import("resource://activity-stream/lib/NmfTextTagger.jsm", {});
-const {TfIdfVectorizer} = ChromeUtils.import("resource://activity-stream/lib/TfIdfVectorizer.jsm", {});
 const {RecipeExecutor} = ChromeUtils.import("resource://activity-stream/lib/RecipeExecutor.jsm", {});
 
 /**
@@ -19,28 +18,37 @@ const {RecipeExecutor} = ChromeUtils.import("resource://activity-stream/lib/Reci
  */
 this.PersonalityProvider = class PersonalityProvider extends UserDomainAffinityProvider {
   // This is just a stub for now, extending UserDomainAffinityProvider until we flesh it out.
-  constructor(...args) {
-    super(...args);
+  constructor(
+    timeSegments,
+    parameterSets,
+    maxHistoryQueryResults,
+    version,
+    scores,
+    modelKeys = []) {
+    super(
+      timeSegments,
+      parameterSets,
+      maxHistoryQueryResults,
+      version,
+      scores);
+    this.modelKeys = modelKeys;
     this.interestVectorStore = new PersistentCache("interest-vector", true);
-  }
-
-  /**
-   * Returns the nb or nmf collection from Remote Settings.
-   */
-  getModel(modelType, tag) {
-    if (modelType !== "nb" && modelType !== "nmf") {
-      throw new Error(`Personality provider received unexpected model for get model: ${modelType}`);
-    }
-
-    // Do we need to clear this at some point in case we have updates?
-    if (!this[`_${modelType}Model${tag}`]) {
-      this[`_${modelType}Model${tag}`] = this.getRemoteSettings(`${modelType}-model-${tag}`);
-    }
-    return this[`_${modelType}Model${tag}`];
   }
 
   getRemoteSettings(name) {
     return RemoteSettings(name);
+  }
+
+  getRecipeExecutor(nbTaggers, nmfTaggers) {
+    return new RecipeExecutor(nbTaggers, nmfTaggers);
+  }
+
+  getNaiveBayesTextTagger(model) {
+    return new NaiveBayesTextTagger(model);
+  }
+
+  getNmfTextTagger(model) {
+    return new NmfTextTagger(model);
   }
 
   /**
@@ -55,32 +63,22 @@ this.PersonalityProvider = class PersonalityProvider extends UserDomainAffinityP
   }
 
   /**
-   * Returns a Text Tagger from a model type, either nb or nmf.
-   * A text tagger allows us to classify text, title or description
-   * of pages found in the browser history.
-   */
-  generateTagger(modelType, tag) {
-    if (modelType !== "nb" && modelType !== "nmf") {
-      throw new Error(`Personality provider received unexpected model for generate tagger: ${modelType}`);
-    }
-
-    let textTagger;
-
-    if (modelType === "nb") {
-      textTagger = new NaiveBayesTextTagger(this.getModel("nb", tag), new TfIdfVectorizer());
-    } else if (modelType === "nmf") {
-      textTagger = new NmfTextTagger(this.getModel("nmf", tag), new TfIdfVectorizer());
-    }
-    return textTagger;
-  }
-
-  /**
-   * Returns a Recipe Executor from a model type, either nb or nmf.
+   * Returns a Recipe Executor.
    * A Recipe Executor is a set of actions that can be consumed by a Recipe.
    * The Recipe determines the order and specifics of which the actions are called.
    */
-  generateRecipeExecutor(tag) {
-    return RecipeExecutor(this.generateTagger("nb", tag), this.generateTagger("nmf", tag));
+  generateRecipeExecutor() {
+    let nbTaggers = [];
+    let nmfTaggers = {};
+    for (let key of this.modelKeys) {
+      let model = this.getRemoteSettings(key);
+      if (model.model_type === "nb") {
+        nbTaggers.push(this.getNaiveBayesTextTagger(model));
+      } else if (model.model_type === "nmf") {
+        nmfTaggers[model.parent_tag] = this.getNmfTextTagger(model);
+      }
+    }
+    return this.getRecipeExecutor(nbTaggers, nmfTaggers);
   }
 };
 

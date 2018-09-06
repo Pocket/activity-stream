@@ -63,6 +63,7 @@ describe("Top Stories Feed", () => {
         return {};
       }
     }
+    class FakePersonalityProvider extends FakeUserDomainAffinityProvider {}
 
     ({
       TopStoriesFeed,
@@ -76,6 +77,7 @@ describe("Top Stories Feed", () => {
     } = injector({
       "lib/ActivityStreamPrefs.jsm": {Prefs: FakePrefs},
       "lib/ShortURL.jsm": {shortURL: shortURLStub},
+      "lib/PersonalityProvider.jsm": {PersonalityProvider: FakePersonalityProvider},
       "lib/UserDomainAffinityProvider.jsm": {UserDomainAffinityProvider: FakeUserDomainAffinityProvider},
       "lib/SectionsManager.jsm": {SectionsManager: sectionsManagerStub}
     }));
@@ -535,13 +537,44 @@ describe("Top Stories Feed", () => {
       // Should remove impressions for rec 1 and 2 as no longer in the feed
       assert.calledWith(instance._prefs.set.firstCall, REC_IMPRESSION_TRACKING_PREF, JSON.stringify({3: 1}));
     });
-    it("should re init and update affinity provider version on affinityProviderV2 pref change", async () => {
+    it("should re init on affinityProviderV2 pref change", async () => {
       sinon.stub(instance, "uninit");
       sinon.stub(instance, "init");
-      instance.onAction({type: at.PREF_CHANGED, data: {name: "affinityProviderV2", value: true}});
-      assert.equal(instance.affinityProviderV2, true);
+      sinon.stub(instance, "clearCache").returns(Promise.resolve());
+      await instance.onAction({type: at.PREF_CHANGED, data: {name: "affinityProviderV2", value: true}});
       assert.calledOnce(instance.uninit);
       assert.calledOnce(instance.init);
+      assert.calledOnce(instance.clearCache);
+    });
+    it("should use UserDomainAffinityProvider from affinityProividerSwitcher not using v2", () => {
+      instance._prefs = {get: pref => "{\"use_v2\": false}"};
+      sinon.stub(instance, "UserDomainAffinityProvider");
+
+      instance.affinityProividerSwitcher();
+      assert.isFalse(instance.affinityProviderV2.use_v2);
+      assert.calledOnce(instance.UserDomainAffinityProvider);
+    });
+    it("should use UserDomainAffinityProvider from affinityProividerSwitcher using v2 with badly formed JSON", () => {
+      instance._prefs = {get: pref => "{use_v2: true}"};
+      sinon.stub(instance, "UserDomainAffinityProvider");
+
+      instance.affinityProividerSwitcher();
+      assert.isUndefined(instance.affinityProviderV2);
+      assert.calledOnce(instance.UserDomainAffinityProvider);
+    });
+    it("should use PersonalityProvider from affinityProividerSwitcher using v2", () => {
+      instance._prefs = {get: pref => "{\"use_v2\": true}"};
+      sinon.stub(instance, "PersonalityProvider");
+
+      instance.affinityProividerSwitcher();
+      assert.isTrue(instance.affinityProviderV2.use_v2);
+      assert.calledOnce(instance.PersonalityProvider);
+    });
+    it("should return an object for UserDomainAffinityProvider", () => {
+      assert.equal(typeof instance.UserDomainAffinityProvider(), "object");
+    });
+    it("should return an object for PersonalityProvider", () => {
+      assert.equal(typeof instance.PersonalityProvider(), "object");
     });
     it("should call affinityProividerSwitcher on loadCachedData", async () => {
       instance.affinityProviderV2 = true;

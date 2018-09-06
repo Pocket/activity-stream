@@ -72,55 +72,44 @@ describe("Personality Provider", () => {
       assert.equal(!!instance.interestVectorStore._cache, true);
     });
   });
-  describe("#models", () => {
-    it("should return expected results from getModel", () => {
-      try {
-        instance.getModel("nothing");
-      } catch (e) {
-        assert.equal(e.message, "Personality provider received unexpected model for get model: nothing");
-      }
-
-      assert.equal(!instance._nmfModelsports, true);
-      assert.equal(!instance._nbModelsports, true);
-
-      assert.equal(!!instance.getModel("nmf", "sports").get, true);
-      assert.equal(!!instance.getModel("nb", "sports").get, true);
-
-      assert.equal(!!instance._nmfModelsports, true);
-      assert.equal(!!instance._nbModelsports, true);
+  describe("#remote-settings", () => {
+    it("should return a remote setting for getRemoteSettings", () => {
+      assert.equal(typeof instance.getRemoteSettings("test"), "object");
     });
   });
   describe("#taggers", () => {
-    it("should throw from generateTagger without model nb or nmf", () => {
-      try {
-        instance.generateTagger("nothing");
-      } catch (e) {
-        assert.equal(e.message, "Personality provider received unexpected model for generate tagger: nothing");
-      }
-    });
-    it("should return a nb text tagger from generateTagger nb model", () => {
-      sinon.stub(instance, "getModel");
-
-      const tagger = instance.generateTagger("nb", "sports");
-
+    it("should return a NaiveBayesTextTagger on getNaiveBayesTextTagger", () => {
+      instance.getNaiveBayesTextTagger({});
       assert.calledOnce(NaiveBayesTextTaggerStub);
-      assert.calledOnce(TfIdfVectorizerStub);
-      assert.calledOnce(instance.getModel);
-      assert.notCalled(NmfTextTaggerStub);
-      assert.calledWith(instance.getModel, "nb", "sports");
-      assert.isDefined(tagger);
     });
-    it("should return a nmf text tagger from generateTagger nmf model", () => {
-      sinon.stub(instance, "getModel");
-
-      const tagger = instance.generateTagger("nmf", "sports");
-
+    it("should return a NmfTextTagger on getNmfTextTagger", () => {
+      instance.getNmfTextTagger({});
       assert.calledOnce(NmfTextTaggerStub);
-      assert.calledOnce(TfIdfVectorizerStub);
-      assert.calledOnce(instance.getModel);
-      assert.notCalled(NaiveBayesTextTaggerStub);
-      assert.calledWith(instance.getModel, "nmf", "sports");
-      assert.isDefined(tagger);
+    });
+  });
+  describe("#executor", () => {
+    it("should return a RecipeExecutor on getRecipeExecutor", () => {
+      instance.getRecipeExecutor([], []);
+      assert.calledOnce(RecipeExecutorStub);
+    });
+    it("should return a recipeExecutor with generateRecipeExecutor", () => {
+      instance.modelKeys = ["nbSports", "nmfSports"];
+      instance.getRecipeExecutor = (nbTaggers, nmfTaggers) => ({nbTaggers, nmfTaggers});
+
+      instance.getRemoteSettings = name => {
+        let returnVal = {};
+        if (name === "nbSports") {
+          returnVal = {model_type: "nb"};
+        } else if (name === "nmfSports") {
+          returnVal = {model_type: "nmf", parent_tag: "parent_tag"};
+        }
+        return returnVal;
+      };
+      instance.getNaiveBayesTextTagger = model => model;
+      instance.getNmfTextTagger = model => model;
+      const recipeExecutor = instance.generateRecipeExecutor();
+      assert.equal(recipeExecutor.nbTaggers[0].model_type, "nb");
+      assert.equal(recipeExecutor.nmfTaggers.parent_tag.model_type, "nmf");
     });
   });
   describe("#recipe", () => {
@@ -135,18 +124,6 @@ describe("Personality Provider", () => {
       instance.recipe = {};
       instance.getRecipe();
       assert.notCalled(instance.getRemoteSettings);
-    });
-    it("should generate two taggers and a recipe executor when calling generateRecipeExecutor", () => {
-      sinon.stub(instance, "generateTagger");
-      instance.generateRecipeExecutor("sports");
-      assert.calledOnce(RecipeExecutorStub);
-      assert.calledTwice(instance.generateTagger);
-      const firstCallArgs = instance.generateTagger.firstCall.args;
-      const secondCallArgs = instance.generateTagger.secondCall.args;
-      assert.equal(firstCallArgs[0], "nb");
-      assert.equal(firstCallArgs[1], "sports");
-      assert.equal(secondCallArgs[0], "nmf");
-      assert.equal(secondCallArgs[1], "sports");
     });
   });
 });

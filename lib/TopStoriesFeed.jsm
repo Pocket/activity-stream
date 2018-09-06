@@ -125,11 +125,26 @@ this.TopStoriesFeed = class TopStoriesFeed {
   }
 
   affinityProividerSwitcher(...args) {
-    let AffinityProvider = UserDomainAffinityProvider;
-    if (this.affinityProviderV2) {
-      AffinityProvider = PersonalityProvider;
+    let affinityProviderV2 = this._prefs.get("affinityProviderV2");
+    if (affinityProviderV2) {
+      try {
+        this.affinityProviderV2 = JSON.parse(affinityProviderV2);
+        if (this.affinityProviderV2 && this.affinityProviderV2.use_v2) {
+          return this.PersonalityProvider(...args, this.affinityProviderV2.model_keys);
+        }
+      } catch (e) {
+        Cu.reportError(`Problem initializing affinity provider v2: ${e.message}`);
+      }
     }
-    return new AffinityProvider(...args);
+    return this.UserDomainAffinityProvider(...args);
+  }
+
+  PersonalityProvider(...args) {
+    return new PersonalityProvider(...args);
+  }
+
+  UserDomainAffinityProvider(...args) {
+    return new UserDomainAffinityProvider(...args);
   }
 
   async fetchStories() {
@@ -583,7 +598,7 @@ this.TopStoriesFeed = class TopStoriesFeed {
           this.dispatchPocketCta(action.data.value, true);
         }
         if (action.data.name === "affinityProviderV2") {
-          this.affinityProviderV2 = action.data.value;
+          await this.clearCache();
           this.uninit();
           this.init();
         }

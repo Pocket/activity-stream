@@ -88,7 +88,10 @@ const PREFS_CONFIG = new Map([
   }],
   ["affinityProviderV2", {
     title: "Switch how we generate spocs and recs to version 2.",
-    value: false
+    value: JSON.stringify({
+      use_v2: false,
+      model_keys: ["nbSports", "nmfSports"]
+    })
   }],
   ["filterAdult", {
     title: "Remove adult pages from sites, highlights, etc.",
