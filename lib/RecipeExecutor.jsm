@@ -171,7 +171,7 @@ this.RecipeExecutor = class RecipeExecutor {
       let nmfTagger = this.nmfTaggers[parentTag];
       if (nmfTagger !== undefined) {
         nestedNmfTags[parentTag] = {};
-        parentWeights[parentTag] = item.nb_tags[parentTag];
+        parentWeights[parentTag] = Math.exp(item.nb_tags[parentTag].logProb);
         let nmfTags = nmfTagger.tagTokens(item.nb_tokens);
         Object.keys(nmfTags).forEach(nmfTag => {
           nestedNmfTags[parentTag][nmfTag] = nmfTags[nmfTag];
@@ -1062,13 +1062,20 @@ this.RecipeExecutor = class RecipeExecutor {
    * Executes a recipe. Returns an object on success, or null on failure.
    */
   executeRecipe(item, recipe) {
+    console.log("====================");
     let newItem = item;
     for (let step of recipe) {
       let op = this.ITEM_BUILDER_REGISTRY[step.function];
       if (op === undefined) {
         return null;
       }
+      if (step.function === "scalar_multiply_tag") {
+      console.log("=== oldItem", "===", newItem);
+      }
       newItem = op.call(this, newItem, step);
+      if (step.function === "scalar_multiply_tag") {
+      console.log("=== newItem", step, "===", newItem);
+      }
       if (newItem === null) {
         break;
       }
