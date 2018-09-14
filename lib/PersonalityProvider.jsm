@@ -28,7 +28,6 @@ this.PersonalityProvider = class PersonalityProvider {
     version,
     scores,
     modelKeys) {
-    console.log(modelKeys);
     this.modelKeys = modelKeys;
     this.timeSegments = timeSegments;
     this.maxHistoryQueryResults = maxHistoryQueryResults;
@@ -89,16 +88,17 @@ this.PersonalityProvider = class PersonalityProvider {
   async generateRecipeExecutor() {
     let nbTaggers = [];
     let nmfTaggers = {};
-    for (let key of this.modelKeys) {
-      console.log(key);
-      let model = (await this.getRemoteSettings(key))[0];
-      if (!model) {
+    const models = await this.getRemoteSettings("personality-provider-models");
+
+    for (let model of models) {
+      if (!model || !this.modelKeys.includes(model.key)) {
         continue;
       }
-      if (model.model_type === "nb") {
-        nbTaggers.push(this.getNaiveBayesTextTagger(model));
-      } else if (model.model_type === "nmf") {
-        nmfTaggers[model.parent_tag] = this.getNmfTextTagger(model);
+
+      if (model.data.model_type === "nb") {
+        nbTaggers.push(this.getNaiveBayesTextTagger(model.data));
+      } else if (model.data.model_type === "nmf") {
+        nmfTaggers[model.data.parent_tag] = this.getNmfTextTagger(model.data);
       }
     }
     return this.getRecipeExecutor(nbTaggers, nmfTaggers);
