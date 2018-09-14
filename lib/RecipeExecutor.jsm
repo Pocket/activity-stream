@@ -40,7 +40,7 @@ this.RecipeExecutor = class RecipeExecutor {
     this.nbTaggers = nbTaggers;
     this.nmfTaggers = nmfTaggers;
 
-    console.log("RecipeExecutor constructed");
+    console.log("RecipeExecutor constructed with", this.nbTaggers.length, 'nbTaggers and', Object.keys(this.nmfTaggers).length, 'nmfTaggers');
   }
 
   /**
@@ -111,14 +111,17 @@ this.RecipeExecutor = class RecipeExecutor {
     let text = this._assembleText(item, config.fields);
     let tokens = tokenize(text);
     let tags = {};
+    let extended_tags = {};
 
     for (let nbTagger of this.nbTaggers) {
       let result = nbTagger.tagTokens(tokens);
       if ((result.label !== null) && result.confident) {
-        tags[result.label] = result;
+        extended_tags[result.label] = result;
+        tags[result.label] = Math.exp(result.logProb);
       }
     }
     item.nb_tags = tags;
+    item.nb_tags_extended = extended_tags;
     item.nb_tokens = tokens;
     return item;
   }
@@ -146,7 +149,7 @@ this.RecipeExecutor = class RecipeExecutor {
       let nmfTagger = this.nmfTaggers[parentTag];
       if (nmfTagger !== undefined) {
         nestedNmfTags[parentTag] = {};
-        parentWeights[parentTag] = Math.exp(item.nb_tags[parentTag].logProb);
+        parentWeights[parentTag] = item.nb_tags[parentTag];
         let nmfTags = nmfTagger.tagTokens(item.nb_tokens);
         Object.keys(nmfTags).forEach(nmfTag => {
           nestedNmfTags[parentTag][nmfTag] = nmfTags[nmfTag];
@@ -397,6 +400,13 @@ this.RecipeExecutor = class RecipeExecutor {
    * the result in left. If left and right are of the same type, results in an
    * error.
    *
+   * Maps are special case. For maps the left must be a nested map such as:
+   * { k1: { k11: 1, k12: 2}, k2: { k21: 3, k22: 4 } } and right needs to be
+   * simple map such as: { k1: 5, k2: 6} .  The operation is then to mulitply
+   * every value of every right key, to every value every subkey where the
+   * parent keys match. Using the previous examples, the result would be:
+   * { k1: { k11: 5, k12: 10 }, k2: { k21: 18, k22: 24 } } .
+   *
    * Config:
    *  left
    *  right
@@ -409,7 +419,7 @@ this.RecipeExecutor = class RecipeExecutor {
     if (leftType !== this._typeOf(item[config.right])) {
       return null;
     }
-    if (leftType === "array") {
+    if (leftType === "array") {``
       if (item[config.left].length !== item[config.right].length) {
         return null;
       }
@@ -417,12 +427,14 @@ this.RecipeExecutor = class RecipeExecutor {
         item[config.left][i] *= item[config.right][i];
       }
     } else if (leftType === "map") {
-      Object.keys(item[config.left]).forEach(key => {
-        let r = 0;
-        if (key in item[config.right]) {
-          r = item[config.right][key];
+      Object.keys(item[config.left]).forEach(outerKey => {
+        let r = 0.0;
+        if (outerKey in item[config.right]) {
+          r = item[config.right][outerKey];
         }
-        item[config.left][key] *= r;
+        Object.keys(item[config.left][outerKey]).forEach(innerKey => {
+          item[config.left][outerKey][innerKey] *= r;
+        });
       });
     } else if (leftType === "number") {
       item[config.left] *= item[config.right];
@@ -1017,13 +1029,15 @@ this.RecipeExecutor = class RecipeExecutor {
       if (op === undefined) {
         return null;
       }
+      /*
       if (step.function === "scalar_multiply_tag") {
       console.log("=== oldItem", "===", newItem);
       }
+      */
       newItem = op.call(this, newItem, step);
-      if (step.function === "scalar_multiply_tag") {
+      //if (step.function === "scalar_multiply_tag") {
       console.log("=== newItem", step, "===", newItem);
-      }
+      //}
       if (newItem === null) {
         break;
       }
