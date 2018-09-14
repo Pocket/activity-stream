@@ -33,6 +33,7 @@ const DEFAULT_RECS_EXPIRE_TIME = 60 * 60 * 1000; // 1 hour
 const SECTION_ID = "topstories";
 const SPOC_IMPRESSION_TRACKING_PREF = "feeds.section.topstories.spoc.impressions";
 const REC_IMPRESSION_TRACKING_PREF = "feeds.section.topstories.rec.impressions";
+const OPTIONS_PREF = "feeds.section.topstories.options";
 const MAX_LIFETIME_CAP = 500; // Guard against misconfiguration on the server
 
 this.TopStoriesFeed = class TopStoriesFeed {
@@ -59,20 +60,18 @@ this.TopStoriesFeed = class TopStoriesFeed {
       this.topicsLastUpdated = 0;
       this.storiesLoaded = false;
       this.domainAffinitiesLastUpdated = 0;
+      this.processAffinityProividerVersion(options);
       this.dispatchPocketCta(this._prefs.get("pocketCta"), false);
 
       // Cache is used for new page loads, which shouldn't have changed data.
       // If we have changed data, cache should be cleared,
       // and last updated should be 0, and we can fetch.
-      // await this.loadCachedData();
+      await this.loadCachedData();
       if (this.storiesLastUpdated === 0) {
         await this.fetchStories();
       }
       if (this.topicsLastUpdated === 0) {
         await this.fetchTopics();
-      }
-      if (this.domainAffinitiesLastUpdated === 0) {
-        this.updateDomainAffinityScores();
       }
       this.doContentUpdate(true);
       this.storiesLoaded = true;
@@ -133,17 +132,14 @@ this.TopStoriesFeed = class TopStoriesFeed {
     this.dispatchUpdateEvent(shouldBroadcast, updateProps);
   }
 
-  affinityProividerSwitcher(...args) {
-    let affinityProviderV2 = this._prefs.get("affinityProviderV2");
-    if (affinityProviderV2) {
-      try {
-        this.affinityProviderV2 = JSON.parse(affinityProviderV2);
-        if (this.affinityProviderV2 && this.affinityProviderV2.use_v2) {
-          return this.PersonalityProvider(...args, this.affinityProviderV2.model_keys);
-        }
-      } catch (e) {
-        Cu.reportError(`Problem initializing affinity provider v2: ${e.message}`);
-      }
+  async affinityProividerSwitcher(...args) {
+    console.log("switcher");
+    const {affinityProviderV2} = this;
+    if (affinityProviderV2 && affinityProviderV2.use_v2) {
+      console.log("v2 keys", affinityProviderV2.model_keys);
+      const provider = this.PersonalityProvider(...args, affinityProviderV2.model_keys);
+      await provider.init();
+      return provider;
     }
     return this.UserDomainAffinityProvider(...args);
   }
@@ -194,7 +190,7 @@ this.TopStoriesFeed = class TopStoriesFeed {
 
     let affinities = data.domainAffinities;
     if (this.personalized && affinities && affinities.scores) {
-      this.affinityProvider = this.affinityProividerSwitcher(affinities.timeSegments,
+      this.affinityProvider = await this.affinityProividerSwitcher(affinities.timeSegments,
         affinities.parameterSets, affinities.maxHistoryQueryResults, affinities.version, affinities.scores);
       this.domainAffinitiesLastUpdated = affinities._timestamp;
     }
@@ -283,7 +279,7 @@ this.TopStoriesFeed = class TopStoriesFeed {
     }
   }
 
-  updateDomainAffinityScores() {
+  async updateDomainAffinityScores() {
     if (!this.personalized || !this.domainAffinityParameterSets ||
       Date.now() - this.domainAffinitiesLastUpdated < MIN_DOMAIN_AFFINITIES_UPDATE_TIME) {
       return;
@@ -291,7 +287,7 @@ this.TopStoriesFeed = class TopStoriesFeed {
 
     const start = perfService.absNow();
 
-    this.affinityProvider = this.affinityProividerSwitcher(
+    this.affinityProvider = await this.affinityProividerSwitcher(
       this.timeSegments,
       this.domainAffinityParameterSets,
       this.maxHistoryQueryResults,
@@ -539,6 +535,23 @@ this.TopStoriesFeed = class TopStoriesFeed {
     this.init();
   }
 
+  processAffinityProividerVersion(data) {
+    const version2 = data.version === 2 && !this.affinityProviderV2;
+    const version1 = data.version === 1 && this.affinityProviderV2;
+    if (version2 || version1) {
+      if (version1) {
+        this.affinityProviderV2 = null;
+      } else {
+        this.affinityProviderV2 = {
+          use_v2: true,
+          model_keys: data.model_keys
+        };
+      }
+      return true;
+    }
+    return false;
+  }
+
   async onAction(action) {
     switch (action.type) {
       case at.INIT:
@@ -606,10 +619,17 @@ this.TopStoriesFeed = class TopStoriesFeed {
         if (action.data.name === "pocketCta") {
           this.dispatchPocketCta(action.data.value, true);
         }
-        if (action.data.name === "affinityProviderV2") {
-          await this.clearCache();
-          this.uninit();
-          this.init();
+        if (action.data.name === OPTIONS_PREF) {
+          try {
+            const options = JSON.parse(action.data.value);
+            if (this.processAffinityProividerVersion(options)) {
+              await this.clearCache();
+              this.uninit();
+              this.init();
+            }
+          } catch (e) {
+            Cu.reportError(`Problem initializing affinity provider v2: ${e.message}`);
+          }
         }
         break;
     }
