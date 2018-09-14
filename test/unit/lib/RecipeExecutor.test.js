@@ -25,7 +25,7 @@ class MockTagger {
   }
 }
 
-describe("RecipeExecutor", () => {
+describe.only("RecipeExecutor", () => {
   let makeItem = () => {
     let x = {
       lhs: 2,
@@ -80,7 +80,7 @@ describe("RecipeExecutor", () => {
     return x;
   };
 
-  let EPSILON = 0.00001;
+  let EPSILON = 0.000001;
 
   let instance = new RecipeExecutor(
     [new MockTagger("nb", {tag1: 0.70}),
@@ -167,12 +167,16 @@ describe("RecipeExecutor", () => {
       item = instance.conditionallyNmfTag(item, {});
       assert.isTrue(("nb_tags" in item));
       assert.deepEqual(item.nmf_tags, {
-        tag21: 0.8,
-        tag22: 0.7,
-        tag23: 0.6,
-        tag31: 0.7,
-        tag32: 0.6,
-        tag33: 0.5
+        tag2: {
+          tag21: 0.8,
+          tag22: 0.7,
+          tag23: 0.6
+        },
+        tag3: {
+          tag31: 0.7,
+          tag32: 0.6,
+          tag33: 0.5
+        }
       });
       assert.deepEqual(item.nmf_tags_parent, {
         tag21: "tag2",
@@ -664,34 +668,24 @@ describe("RecipeExecutor", () => {
       item = instance.scalarMultiplyTag(item, {field: "missing", k: 3});
       assert.equal(item, null);
     });
-    it("should scalar multiply an array", () => {
-      item = instance.scalarMultiplyTag(item, {field: "arr1", k: 3});
-      assert.deepEqual(item.arr1, [6, 9, 12]);
+    it("should scalar multiply a nested map", () => {
+      item = instance.scalarMultiplyTag(item, {field: "tags", k: 3, log_scale: false});
+      let expected = {a: {aa: 0.3, ab: 0.6, ac: 0.9}, b: {ba: 12, bb: 15, bc: 18}};
+      assert.isTrue(Math.abs(item.tags.a.aa - 0.3) <= EPSILON);
+      assert.isTrue(Math.abs(item.tags.a.ab - 0.6) <= EPSILON);
+      assert.isTrue(Math.abs(item.tags.a.ac - 0.9) <= EPSILON);
+      assert.isTrue(Math.abs(item.tags.b.ba - 12) <= EPSILON);
+      assert.isTrue(Math.abs(item.tags.b.bb - 15) <= EPSILON);
+      assert.isTrue(Math.abs(item.tags.b.bc - 18) <= EPSILON);
     });
-    it("should scalar multiply an array with logrithms", () => {
-      item = instance.scalarMultiplyTag(item, {field: "arr1", k: 3, log_scale: true});
-      assert.equal(item.arr1.length, 3);
-      assert.isTrue(Math.abs(item.arr1[0] - Math.log(2) * 3) <= EPSILON);
-      assert.isTrue(Math.abs(item.arr1[1] - Math.log(3) * 3) <= EPSILON);
-      assert.isTrue(Math.abs(item.arr1[2] - Math.log(4) * 3) <= EPSILON);
-    });
-    it("should scalar multiply a number", () => {
-      item = instance.scalarMultiplyTag(item, {field: "lhs", k: 3});
-      assert.equal(item.lhs, 6);
-    });
-    it("should scalar multiply a number with logrithms", () => {
-      item = instance.scalarMultiplyTag(item, {field: "lhs", k: 3, log_scale: true});
-      assert.isTrue(Math.abs(item.lhs - Math.log(2) * 3) <= EPSILON);
-    });
-    it("should scalar multiply a map", () => {
-      item = instance.scalarMultiplyTag(item, {field: "map", k: 3, log_scale: false});
-      assert.deepEqual(item.map, {a: 3, b: 6, c: 9});
-    });
-    it("should scalar multiply a map with logrithms", () => {
-      item = instance.scalarMultiplyTag(item, {field: "map", k: 3, log_scale: true});
-      assert.isTrue(Math.abs(item.map.a - Math.log(1) * 3) <= EPSILON);
-      assert.isTrue(Math.abs(item.map.b - Math.log(2) * 3) <= EPSILON);
-      assert.isTrue(Math.abs(item.map.c - Math.log(3) * 3) <= EPSILON);
+    it("should scalar multiply a nested map with logrithms", () => {
+      item = instance.scalarMultiplyTag(item, {field: "tags", k: 3, log_scale: true});
+      assert.isTrue(Math.abs(item.tags.a.aa - Math.log(0.1 + EPSILON) * 3) <= EPSILON);
+      assert.isTrue(Math.abs(item.tags.a.ab - Math.log(0.2 + EPSILON) * 3) <= EPSILON);
+      assert.isTrue(Math.abs(item.tags.a.ac - Math.log(0.3 + EPSILON) * 3) <= EPSILON);
+      assert.isTrue(Math.abs(item.tags.b.ba - Math.log(4 + EPSILON) * 3) <= EPSILON);
+      assert.isTrue(Math.abs(item.tags.b.bb - Math.log(5 + EPSILON) * 3) <= EPSILON);
+      assert.isTrue(Math.abs(item.tags.b.bc - Math.log(6 + EPSILON) * 3) <= EPSILON);
     });
     it("should fail a string", () => {
       item = instance.scalarMultiplyTag(item, {field: "foo", k: 3});

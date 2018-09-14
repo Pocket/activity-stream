@@ -134,8 +134,9 @@ this.RecipeExecutor = class RecipeExecutor {
    *  Not configurable
    */
   conditionallyNmfTag(item, config) {
-    let allNmfTags = {};
+    let nestedNmfTags = {};
     let parentTags = {};
+    let parentWeights = {};
 
     if (!("nb_tags" in item) || !("nb_tokens" in item)) {
       return null;
@@ -144,17 +145,19 @@ this.RecipeExecutor = class RecipeExecutor {
     Object.keys(item.nb_tags).forEach(parentTag => {
       let nmfTagger = this.nmfTaggers[parentTag];
       if (nmfTagger !== undefined) {
+        nestedNmfTags[parentTag] = {};
+        parentWeights[parentTag] = Math.exp(item.nb_tags[parentTag].logProb);
         let nmfTags = nmfTagger.tagTokens(item.nb_tokens);
         Object.keys(nmfTags).forEach(nmfTag => {
-          allNmfTags[nmfTag] = nmfTags[nmfTag];
+          nestedNmfTags[parentTag][nmfTag] = nmfTags[nmfTag];
           parentTags[nmfTag] = parentTag;
         });
       }
     });
 
-    item.nmf_tags = allNmfTags;
+    item.nmf_tags = nestedNmfTags;
     item.nmf_tags_parent = parentTags;
-    item.nmf_tags_parent_weights = JSON.parse(JSON.stringify(item.nb_tags));
+    item.nmf_tags_parent_weights = parentWeights;
 
     return item;
   }
@@ -786,28 +789,16 @@ this.RecipeExecutor = class RecipeExecutor {
     }
     let k = this._lookupScalar(item, config.k, 1);
     let type = this._typeOf(item[config.field]);
-    if (type === "array") {
-      for (let i = 0; i < item[config.field].length; i++) {
-        let v = item[config.field][i];
-        if (config.log_scale) {
-          v = Math.log(v + EPSILON);
-        }
-        item[config.field][i] = v * k;
-      }
-    } else if (type === "map") {
-      Object.keys(item[config.field]).forEach(key => {
-        let v = item[config.field][key];
-        if (config.log_scale) {
-          v = Math.log(v + EPSILON);
-        }
-        item[config.field][key] = v * k;
+    if (type === "map") {
+      Object.keys(item[config.field]).forEach(parentKey => {
+        Object.keys(item[config.field][parentKey]).forEach(key => {
+          let v = item[config.field][parentKey][key];
+          if (config.log_scale) {
+            v = Math.log(v + EPSILON);
+          }
+          item[config.field][parentKey][key] = v * k;
+        });
       });
-    } else if (type === "number") {
-      let v = item[config.field];
-      if (config.log_scale) {
-        v = Math.log(v + EPSILON);
-      }
-      item[config.field] = v * k;
     } else {
       return null;
     }
@@ -1019,18 +1010,25 @@ this.RecipeExecutor = class RecipeExecutor {
    * Executes a recipe. Returns an object on success, or null on failure.
    */
   executeRecipe(item, recipe) {
+    console.log("====================");
     let newItem = item;
     for (let step of recipe) {
       let op = this.ITEM_BUILDER_REGISTRY[step.function];
       if (op === undefined) {
         return null;
       }
+      if (step.function === "scalar_multiply_tag") {
+      console.log("=== oldItem", "===", newItem);
+      }
       newItem = op.call(this, newItem, step);
+      if (step.function === "scalar_multiply_tag") {
+      console.log("=== newItem", step, "===", newItem);
+      }
       if (newItem === null) {
         break;
       }
     }
-
+    console.log("====================");
     return newItem;
   }
 

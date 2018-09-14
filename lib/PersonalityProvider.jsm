@@ -40,7 +40,8 @@ this.PersonalityProvider = class PersonalityProvider {
     this.store = new PersistentCache("personality-provider", true);
     this.interestConfig = await this.getRecipe();
     this.recipeExecutor = await this.generateRecipeExecutor();
-    this.interestVector = await this.store.get("interest-vector");
+    //this.interestVector = await this.store.get("interest-vector");
+    this.interestVector = undefined;
 
     // Fetch a new one if none exists or every set update time.
     if (!this.interestVector ||
@@ -91,18 +92,15 @@ this.PersonalityProvider = class PersonalityProvider {
     for (let key of this.modelKeys) {
       console.log(key);
       let model = (await this.getRemoteSettings(key))[0];
-      console.log(model);
       if (!model) {
         continue;
       }
-      console.log(model);
       if (model.model_type === "nb") {
         nbTaggers.push(this.getNaiveBayesTextTagger(model));
       } else if (model.model_type === "nmf") {
         nmfTaggers[model.parent_tag] = this.getNmfTextTagger(model);
       }
     }
-    console.log(nbTaggers, nmfTaggers);
     return this.getRecipeExecutor(nbTaggers, nmfTaggers);
   }
 
