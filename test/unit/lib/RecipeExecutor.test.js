@@ -704,7 +704,6 @@ describe.only("RecipeExecutor", () => {
     });
     it("should scalar multiply a nested map", () => {
       item = instance.scalarMultiplyTag(item, {field: "tags", k: 3, log_scale: false});
-      let expected = {a: {aa: 0.3, ab: 0.6, ac: 0.9}, b: {ba: 12, bb: 15, bc: 18}};
       assert.isTrue(Math.abs(item.tags.a.aa - 0.3) <= EPSILON);
       assert.isTrue(Math.abs(item.tags.a.ab - 0.6) <= EPSILON);
       assert.isTrue(Math.abs(item.tags.a.ac - 0.9) <= EPSILON);
