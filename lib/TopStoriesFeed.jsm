@@ -128,13 +128,11 @@ this.TopStoriesFeed = class TopStoriesFeed {
   }
 
   affinityProividerSwitcher(...args) {
-    console.log("switcher");
     let affinityProviderV2 = this._prefs.get("affinityProviderV2");
     if (affinityProviderV2) {
       try {
         this.affinityProviderV2 = JSON.parse(affinityProviderV2);
         if (this.affinityProviderV2 && this.affinityProviderV2.use_v2) {
-          console.log("v2 keys", this.affinityProviderV2.model_keys);
           return this.PersonalityProvider(...args, this.affinityProviderV2.model_keys);
         }
       } catch (e) {
@@ -145,7 +143,6 @@ this.TopStoriesFeed = class TopStoriesFeed {
   }
 
   PersonalityProvider(...args) {
-    console.log(...args);
     return new PersonalityProvider(...args);
   }
 

@@ -137,17 +137,24 @@ describe("RecipeExecutor", () => {
       item = instance.naiveBayesTag(item, {fields: ["text"]});
       assert.isTrue("nb_tags" in item);
       assert.isTrue(!("tag1" in item.nb_tags));
-      assert.deepEqual(item.nb_tags.tag2, {
+      assert.equal(item.nb_tags_extended.tag2, 0.86);
+      assert.equal(item.nb_tags_extended.tag3, 0.90);
+      assert.equal(item.nb_tags_extended.tag5, 0.90);
+      assert.isTrue("nb_tokens" in item);
+      assert.deepEqual(item.nb_tokens, ["this", "is", "a", "sentence"]);
+      assert.isTrue("nb_tags_extended" in item);
+      assert.isTrue(!("tag1" in item.nb_tags_extended));
+      assert.deepEqual(item.nb_tags_extended.tag2, {
         label: "tag2",
         logProb: Math.log(0.86),
         confident: true
       });
-      assert.deepEqual(item.nb_tags.tag3, {
+      assert.deepEqual(item.nb_tags_extended.tag3, {
         label: "tag3",
         logProb: Math.log(0.90),
         confident: true
       });
-      assert.deepEqual(item.nb_tags.tag5, {
+      assert.deepEqual(item.nb_tags_extended.tag5, {
         label: "tag5",
         logProb: Math.log(0.90),
         confident: true
@@ -381,6 +388,11 @@ describe("RecipeExecutor", () => {
       assert.isTrue("c" in item.map);
       assert.equal(item.map.c, 3);
     });
+    it("should promote up nested fields", () => {
+      item = instance.keepTopK(item, {field: "tags", k: 2});
+      assert.equal(Object.keys(item.tags).length, 2);
+      assert.deepEqual(item.tag, {bb: 5, bc: 6});
+    });
     it("should error for a missing field", () => {
       item = instance.keepTopK(item, {field: "missing", k: 3});
       assert.equal(item, null);
@@ -427,7 +439,7 @@ describe("RecipeExecutor", () => {
   describe("#elementwiseMultiply", () => {
     it("should handle maps", () => {
       item = instance.elementwiseMultiply(item, {left: "tags", right: "map2"});
-      assert.deepEqual(item.tags, { a: { aa: 0, ab: 0, ac: 0 }, b: { ba: 8, bb: 10, bc: 12 } });
+      assert.deepEqual(item.tags, {a: {aa: 0, ab: 0, ac: 0}, b: {ba: 8, bb: 10, bc: 12}});
     });
     it("should handle arrays of same length", () => {
       item = instance.elementwiseMultiply(item, {left: "arr1", right: "arr2"});
@@ -668,7 +680,6 @@ describe("RecipeExecutor", () => {
     });
     it("should scalar multiply a nested map", () => {
       item = instance.scalarMultiplyTag(item, {field: "tags", k: 3, log_scale: false});
-      let expected = {a: {aa: 0.3, ab: 0.6, ac: 0.9}, b: {ba: 12, bb: 15, bc: 18}};
       assert.isTrue(Math.abs(item.tags.a.aa - 0.3) <= EPSILON);
       assert.isTrue(Math.abs(item.tags.a.ab - 0.6) <= EPSILON);
       assert.isTrue(Math.abs(item.tags.a.ac - 0.9) <= EPSILON);

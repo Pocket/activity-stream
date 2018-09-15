@@ -39,8 +39,6 @@ this.RecipeExecutor = class RecipeExecutor {
     };
     this.nbTaggers = nbTaggers;
     this.nmfTaggers = nmfTaggers;
-
-    console.log("RecipeExecutor constructed with", this.nbTaggers.length, 'nbTaggers and', Object.keys(this.nmfTaggers).length, 'nmfTaggers');
   }
 
   /**
@@ -313,11 +311,13 @@ this.RecipeExecutor = class RecipeExecutor {
   }
 
   /**
-   * Filters in place a a field containing a map of strings to numbers, keeping
-   * at most k items.
+   * Converts a field containing a map of strings to a map of strings
+   * to numbers, to a map of strings to numbers containing at most k elements.
+   * This operation is performed by first, promoting all the subkeys up one
+   * level, and then taking the top (or bottom) k values.
    *
    * Config:
-   *  field         Points to a map of strings to numbers
+   *  field         Points to a map of strings to a map of strings to numbers
    *  k             Maximum number of items to keep
    *  descending    OPTIONAL (DEFAULT: True) Sorts score in descending  order
    *                  (i.e. keeps maximum)
@@ -332,9 +332,17 @@ this.RecipeExecutor = class RecipeExecutor {
     // we can't sort by the values in the map, so we have to convert this
     // to an array, and then sort.
     let sortable = [];
-    Object.keys(item[config.field]).forEach(key => {
-      sortable.push({key, value: item[config.field][key]});
+    Object.keys(item[config.field]).forEach(outerKey => {
+      let innerType = this._typeOf(item[config.field][outerKey]);
+      if (innerType === "map") {
+        Object.keys(item[config.field][outerKey]).forEach(innerKey => {
+          sortable.push({key: innerKey, value: item[config.field][outerKey][innerKey]});
+        });
+      } else {
+        sortable.push({key: outerKey, value: item[config.field][outerKey]});
+      }
     });
+
     sortable.sort((a, b) => {
       if (descending) {
         return b.value - a.value;
@@ -419,7 +427,7 @@ this.RecipeExecutor = class RecipeExecutor {
     if (leftType !== this._typeOf(item[config.right])) {
       return null;
     }
-    if (leftType === "array") {``
+    if (leftType === "array") {
       if (item[config.left].length !== item[config.right].length) {
         return null;
       }
@@ -1022,27 +1030,17 @@ this.RecipeExecutor = class RecipeExecutor {
    * Executes a recipe. Returns an object on success, or null on failure.
    */
   executeRecipe(item, recipe) {
-    console.log("====================");
     let newItem = item;
     for (let step of recipe) {
       let op = this.ITEM_BUILDER_REGISTRY[step.function];
       if (op === undefined) {
         return null;
       }
-      /*
-      if (step.function === "scalar_multiply_tag") {
-      console.log("=== oldItem", "===", newItem);
-      }
-      */
       newItem = op.call(this, newItem, step);
-      //if (step.function === "scalar_multiply_tag") {
-      console.log("=== newItem", step, "===", newItem);
-      //}
       if (newItem === null) {
         break;
       }
     }
-    console.log("====================");
     return newItem;
   }
 
