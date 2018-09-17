@@ -120,7 +120,7 @@ this.PersonalityProvider = class PersonalityProvider {
       sql += ` AND ${requiredColumn} <> ""`;
     });
 
-    const activityStreamProvider = this.getNewTabUtils().activityStreamProvider;
+    const {activityStreamProvider} = this.getNewTabUtils();
     const history = await activityStreamProvider.executePlacesQuery(sql, {
       columns,
       params: {}

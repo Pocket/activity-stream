@@ -313,14 +313,10 @@ describe("Personality Provider", () => {
   });
   describe("#fetchHistory", () => {
     it("should return a history object for fetchHistory", async () => {
-      instance.getNewTabUtils = () => ({
-        activityStreamProvider: {
-          executePlacesQuery: async (sql, options) => ({sql, options})
-        }
-      });
+      instance.getNewTabUtils = () => ({activityStreamProvider: {executePlacesQuery: async (sql, options) => ({sql, options})}});
       const history = await instance.fetchHistory(["requiredColumn"], 1, 1);
-      assert.equal(history.sql, `SELECT *\n    FROM moz_places\n    WHERE last_visit_date >= 1000000\n    AND last_visit_date < 1000000`);
-      assert.equal(history.options.columns.length, 0);
+      assert.equal(history.sql, `SELECT *\n    FROM moz_places\n    WHERE last_visit_date >= 1000000\n    AND last_visit_date < 1000000 AND requiredColumn <> ""`);
+      assert.equal(history.options.columns.length, 1);
       assert.equal(Object.keys(history.options.params).length, 0);
     });
   });
