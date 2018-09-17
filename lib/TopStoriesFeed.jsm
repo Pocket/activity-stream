@@ -66,7 +66,7 @@ this.TopStoriesFeed = class TopStoriesFeed {
       // Cache is used for new page loads, which shouldn't have changed data.
       // If we have changed data, cache should be cleared,
       // and last updated should be 0, and we can fetch.
-      // await this.loadCachedData();
+      await this.loadCachedData();
       if (this.storiesLastUpdated === 0) {
         await this.fetchStories();
       }
@@ -140,7 +140,9 @@ this.TopStoriesFeed = class TopStoriesFeed {
     const {affinityProviderV2} = this;
     if (affinityProviderV2 && affinityProviderV2.use_v2) {
       console.log("v2 keys", affinityProviderV2.model_keys);
-      return this.PersonalityProvider(...args, affinityProviderV2.model_keys);
+      const provider = this.PersonalityProvider(...args, affinityProviderV2.model_keys);
+      provider.init();
+      return provider;
     }
     return this.UserDomainAffinityProvider(...args);
   }

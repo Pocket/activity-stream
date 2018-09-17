@@ -602,6 +602,13 @@ describe("Top Stories Feed", () => {
       await instance.loadCachedData();
       assert.calledOnce(instance.affinityProividerSwitcher);
     });
+    it("should call init on PersonalityProvider v2", () => {
+      instance._prefs = {get: pref => "{\"use_v2\": true}"};
+      instance.PersonalityProvider = () => ({init: sinon.spy()});
+
+      const provider = instance.affinityProividerSwitcher();
+      assert.calledOnce(provider.init);
+    });
     it("should change domainAffinitiesLastUpdated on loadCachedData", async () => {
       instance.affinityProviderV2 = true;
       instance.personalized = true;
