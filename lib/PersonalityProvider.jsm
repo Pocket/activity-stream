@@ -39,7 +39,8 @@ this.PersonalityProvider = class PersonalityProvider {
     this.store = new PersistentCache("personality-provider", true);
     this.interestConfig = await this.getRecipe();
     this.recipeExecutor = await this.generateRecipeExecutor();
-    this.interestVector = await this.store.get("interest-vector");
+    // FIXME: uncomment this.interestVector = await this.store.get("interest-vector");
+    this.interestVector = undefined;
 
     // Fetch a new one if none exists or every set update time.
     if (!this.interestVector ||
@@ -75,7 +76,6 @@ this.PersonalityProvider = class PersonalityProvider {
     if (!this.recipe) {
       this.recipe = await this.getRemoteSettings("personality-provider-recipe");
     }
-    console.log("this.recipe", this.recipe);
     return this.recipe[0];
   }
 
@@ -100,8 +100,6 @@ this.PersonalityProvider = class PersonalityProvider {
         nmfTaggers[model.data.parent_tag] = this.getNmfTextTagger(model.data);
       }
     }
-    console.log(nbTaggers, nmfTaggers);
-    console.log("===============");
     return this.getRecipeExecutor(nbTaggers, nmfTaggers);
   }
 
@@ -130,22 +128,15 @@ this.PersonalityProvider = class PersonalityProvider {
    * describes the topics the user frequently browses.
    */
   async createInterestVector() {
-    console.log("createInterestVector");
     let interestVector = {};
     let endTimeSecs = ((new Date()).getTime() / 1000);
-    console.log("..... interestConfig", this.interestConfig);
     let beginTimeSecs = endTimeSecs - this.interestConfig.history_limit_secs;
     let history = await this.fetchHistory(this.interestConfig.history_required_fields, beginTimeSecs, endTimeSecs);
 
-    let itemId = -1;
     for (let historyRec of history) {
-      itemId++;
       let ivItem = this.recipeExecutor.executeRecipe(historyRec, this.interestConfig.history_item_builder);
       if (ivItem === null) {
         continue;
-      }
-      if (Object.keys(ivItem.tags).length > 0) {
-        console.log("***** TAGGED ", itemId, " :: ", ivItem);
       }
       interestVector = this.recipeExecutor.executeCombinerRecipe(
         interestVector,
@@ -167,6 +158,7 @@ this.PersonalityProvider = class PersonalityProvider {
    * is populated.
    */
   calculateItemRelevanceScore(pocketItem) {
+    console.log("scoring", pocketItem.url, "((", pocketItem.title, "))");
     let scorableItem = this.recipeExecutor.executeRecipe(pocketItem, this.interestConfig.item_to_rank_builder);
     if (scorableItem === null) {
       return -1;
@@ -178,8 +170,10 @@ this.PersonalityProvider = class PersonalityProvider {
     rankingVector = this.recipeExecutor.executeRecipe(rankingVector, this.interestConfig.item_ranker);
 
     if (rankingVector === null) {
+      console.log("ERROR !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
       return -1;
     }
+    console.log("scored", rankingVector.score);
     return rankingVector.score;
   }
 

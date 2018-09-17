@@ -133,14 +133,12 @@ this.TopStoriesFeed = class TopStoriesFeed {
     console.log("switcher");
     const {affinityProviderV2} = this;
     if (affinityProviderV2 && affinityProviderV2.use_v2) {
-      console.log("v2 keys", affinityProviderV2.model_keys);
       return this.PersonalityProvider(...args, affinityProviderV2.model_keys);
     }
     return this.UserDomainAffinityProvider(...args);
   }
 
   PersonalityProvider(...args) {
-    console.log(...args);
     return new PersonalityProvider(...args);
   }
 
