@@ -604,11 +604,7 @@ describe("Top Stories Feed", () => {
     });
     it("should call init on PersonalityProvider v2", () => {
       instance._prefs = {get: pref => "{\"use_v2\": true}"};
-      instance.PersonalityProvider = () => {
-        return {
-          init: sinon.spy()
-        };
-      };
+      instance.PersonalityProvider = () => ({init: sinon.spy()});
 
       const provider = instance.affinityProividerSwitcher();
       assert.calledOnce(provider.init);

@@ -140,9 +140,7 @@ describe("Personality Provider", () => {
   describe("#init", () => {
     it("should do generic init stuff when calling init with no cache", async () => {
       sinon.stub(instance, "getRecipe").returns(Promise.resolve());
-      instance.createInterestVector = async () => {
-        return {};
-      };
+      instance.createInterestVector = async () => ({});
       sinon.stub(instance, "generateRecipeExecutor").returns(Promise.resolve());
       sinon.stub(instance.store, "get").returns(Promise.resolve());
       sinon.stub(instance.store, "set").returns(Promise.resolve());
@@ -158,12 +156,8 @@ describe("Personality Provider", () => {
     it("should make new interest vector when called with out dated cache", async () => {
       const startTime = Date.now() - (24 * 60 * 60 * 1000); // 24 hours
       instance.getRecipe = async () => {};
-      instance.createInterestVector = async () => {
-        return {};
-      };
-      instance.store.get = async () => {
-        return {lastUpdate: startTime};
-      };
+      instance.createInterestVector = async () => ({});
+      instance.store.get = async () => ({lastUpdate: startTime});
       instance.generateRecipeExecutor = async () => {};
       sinon.stub(instance.store, "set").returns(Promise.resolve());
       await instance.init();
@@ -173,12 +167,8 @@ describe("Personality Provider", () => {
     it("should use interest vector when called with cache", async () => {
       const startTime = Date.now() + (24 * 60 * 60 * 1000); // 24 hours
       instance.getRecipe = async () => {};
-      instance.createInterestVector = async () => {
-        return {};
-      };
-      instance.store.get = async () => {
-        return {lastUpdate: startTime};
-      };
+      instance.createInterestVector = async () => ({});
+      instance.store.get = async () => ({lastUpdate: startTime});
       instance.generateRecipeExecutor = async () => {};
       sinon.stub(instance.store, "set").returns(Promise.resolve());
       await instance.init();
@@ -217,12 +207,10 @@ describe("Personality Provider", () => {
       instance.modelKeys = ["nb_model_sports", "nmf_model_sports"];
       sinon.stub(instance, "getRecipeExecutor");
 
-      instance.getRemoteSettings = async name => {
-        return [
-          {key: "nb_model_sports", data: {model_type: "nb"}},
-          {key: "nmf_model_sports", data: {model_type: "nmf", parent_tag: "nmf_sports_parent_tag"}}
-        ];
-      };
+      instance.getRemoteSettings = async name => [
+        {key: "nb_model_sports", data: {model_type: "nb"}},
+        {key: "nmf_model_sports", data: {model_type: "nmf", parent_tag: "nmf_sports_parent_tag"}}
+      ];
       instance.getNaiveBayesTextTagger = model => model;
       instance.getNmfTextTagger = model => model;
       await instance.generateRecipeExecutor();
@@ -230,8 +218,8 @@ describe("Personality Provider", () => {
 
       const {args} = instance.getRecipeExecutor.firstCall;
       assert.equal(args[0][0].model_type, "nb");
-      assert.equal(args[1]["nmf_sports_parent_tag"].model_type, "nmf");
-      assert.equal(args[1]["nmf_sports_parent_tag"].parent_tag, "nmf_sports_parent_tag");
+      assert.equal(args[1].nmf_sports_parent_tag.model_type, "nmf");
+      assert.equal(args[1].nmf_sports_parent_tag.parent_tag, "nmf_sports_parent_tag");
     });
   });
   describe("#recipe", () => {
