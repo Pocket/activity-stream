@@ -30,8 +30,10 @@ this.PersonalityProvider = class PersonalityProvider {
     modelKeys) {
     this.modelKeys = modelKeys;
     this.timeSegments = timeSegments;
+    this.parameterSets = parameterSets;
     this.maxHistoryQueryResults = maxHistoryQueryResults;
     this.version = version;
+    this.scores = scores;
     this.store = new PersistentCache("personality-provider", true);
   }
 
@@ -64,6 +66,10 @@ this.PersonalityProvider = class PersonalityProvider {
 
   getNmfTextTagger(model) {
     return new NmfTextTagger(model);
+  }
+
+  getNewTabUtils() {
+    return NewTabUtils;
   }
 
   /**
@@ -114,7 +120,8 @@ this.PersonalityProvider = class PersonalityProvider {
       sql += ` AND ${requiredColumn} <> ""`;
     });
 
-    const history = await NewTabUtils.activityStreamProvider.executePlacesQuery(sql, {
+    const activityStreamProvider = this.getNewTabUtils().activityStreamProvider;
+    const history = await activityStreamProvider.executePlacesQuery(sql, {
       columns,
       params: {}
     });

@@ -138,6 +138,11 @@ describe("Personality Provider", () => {
     globals.restore();
   });
   describe("#init", () => {
+    it("should return correct data for getAffinities", () => {
+      const affinities = instance.getAffinities();
+      assert.isDefined(affinities.timeSegments);
+      assert.isDefined(affinities.parameterSets);
+    });
     it("should do generic init stuff when calling init with no cache", async () => {
       sinon.stub(instance, "getRecipe").returns(Promise.resolve());
       instance.createInterestVector = async () => ({});
@@ -188,6 +193,11 @@ describe("Personality Provider", () => {
       assert.equal(typeof instance.getRemoteSettings("test"), "object");
     });
   });
+  describe("#NewTabUtils", () => {
+    it("should return an object for getNewTabUtils", () => {
+      assert.equal(typeof instance.getNewTabUtils(), "object");
+    });
+  });
   describe("#taggers", () => {
     it("should return a NaiveBayesTextTagger on getNaiveBayesTextTagger", () => {
       instance.getNaiveBayesTextTagger({});
@@ -220,6 +230,37 @@ describe("Personality Provider", () => {
       assert.equal(args[0][0].model_type, "nb");
       assert.equal(args[1].nmf_sports_parent_tag.model_type, "nmf");
       assert.equal(args[1].nmf_sports_parent_tag.parent_tag, "nmf_sports_parent_tag");
+    });
+    it("should skip any models not in modelKeys", async () => {
+      instance.modelKeys = ["nb_model_sports"];
+      sinon.stub(instance, "getRecipeExecutor");
+
+      instance.getRemoteSettings = async name => [
+        {key: "nb_model_sports", data: {model_type: "nb"}},
+        {key: "nmf_model_sports", data: {model_type: "nmf", parent_tag: "nmf_sports_parent_tag"}}
+      ];
+      instance.getNaiveBayesTextTagger = model => model;
+      instance.getNmfTextTagger = model => model;
+      await instance.generateRecipeExecutor();
+
+      const {args} = instance.getRecipeExecutor.firstCall;
+      assert.equal(args[0][0].model_type, "nb");
+      assert.equal(Object.keys(args[1]).length, 0);
+    });
+    it("should skip any models not defined", async () => {
+      instance.modelKeys = ["nb_model_sports", "nmf_model_sports"];
+      sinon.stub(instance, "getRecipeExecutor");
+
+      instance.getRemoteSettings = async name => [
+        {key: "nb_model_sports", data: {model_type: "nb"}}
+      ];
+      instance.getNaiveBayesTextTagger = model => model;
+      instance.getNmfTextTagger = model => model;
+      await instance.generateRecipeExecutor();
+
+      const {args} = instance.getRecipeExecutor.firstCall;
+      assert.equal(args[0][0].model_type, "nb");
+      assert.equal(Object.keys(args[1]).length, 0);
     });
   });
   describe("#recipe", () => {
@@ -268,6 +309,19 @@ describe("Personality Provider", () => {
       instance.interestVector = {score: 10};
       assert.equal(instance.calculateItemRelevanceScore({score: 2}), 20);
       assert.deepEqual(instance.interestVector, {score: 10});
+    });
+  });
+  describe("#fetchHistory", () => {
+    it("should return a history object for fetchHistory", async () => {
+      instance.getNewTabUtils = () => ({
+        activityStreamProvider: {
+          executePlacesQuery: async (sql, options) => ({sql, options})
+        }
+      });
+      const history = await instance.fetchHistory(["requiredColumn"], 1, 1);
+      assert.equal(history.sql, `SELECT *\n    FROM moz_places\n    WHERE last_visit_date >= 1000000\n    AND last_visit_date < 1000000`);
+      assert.equal(history.options.columns.length, 0);
+      assert.equal(Object.keys(history.options.params).length, 0);
     });
   });
 });
