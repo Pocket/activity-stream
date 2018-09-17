@@ -32,11 +32,10 @@ this.PersonalityProvider = class PersonalityProvider {
     this.timeSegments = timeSegments;
     this.maxHistoryQueryResults = maxHistoryQueryResults;
     this.version = version;
-    this.init();
+    this.store = new PersistentCache("personality-provider", true);
   }
 
   async init() {
-    this.store = new PersistentCache("personality-provider", true);
     this.interestConfig = await this.getRecipe();
     this.recipeExecutor = await this.generateRecipeExecutor();
     this.interestVector = await this.store.get("interest-vector");
@@ -100,8 +99,6 @@ this.PersonalityProvider = class PersonalityProvider {
         nmfTaggers[model.data.parent_tag] = this.getNmfTextTagger(model.data);
       }
     }
-    console.log(nbTaggers, nmfTaggers);
-    console.log("===============");
     return this.getRecipeExecutor(nbTaggers, nmfTaggers);
   }
 

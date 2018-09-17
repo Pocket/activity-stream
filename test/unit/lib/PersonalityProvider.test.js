@@ -137,11 +137,60 @@ describe("Personality Provider", () => {
   afterEach(() => {
     globals.restore();
   });
-  describe("#interestVector", () => {
-    it("should have an interestVectorStore", () => {
-      assert.equal(instance.interestVectorStore.name, "interest-vector");
+  describe("#init", () => {
+    it("should do generic init stuff when calling init with no cache", async () => {
+      sinon.stub(instance, "getRecipe").returns(Promise.resolve());
+      instance.createInterestVector = async () => {
+        return {};
+      };
+      sinon.stub(instance, "generateRecipeExecutor").returns(Promise.resolve());
+      sinon.stub(instance.store, "get").returns(Promise.resolve());
+      sinon.stub(instance.store, "set").returns(Promise.resolve());
+      await instance.init();
+      assert.calledOnce(instance.getRecipe);
+      assert.calledOnce(instance.generateRecipeExecutor);
+      assert.calledOnce(instance.store.get);
+      assert.calledOnce(instance.store.set);
+      assert.isDefined(instance.interestVector);
+      assert.isDefined(instance.interestVector.lastUpdate);
+      assert.isTrue(instance.initialized);
+    });
+    it("should make new interest vector when called with out dated cache", async () => {
+      const startTime = Date.now() - (24 * 60 * 60 * 1000); // 24 hours
+      instance.getRecipe = async () => {};
+      instance.createInterestVector = async () => {
+        return {};
+      };
+      instance.store.get = async () => {
+        return {lastUpdate: startTime};
+      };
+      instance.generateRecipeExecutor = async () => {};
+      sinon.stub(instance.store, "set").returns(Promise.resolve());
+      await instance.init();
+      assert.isTrue(instance.interestVector.lastUpdate > startTime);
+      assert.calledOnce(instance.store.set);
+    });
+    it("should use interest vector when called with cache", async () => {
+      const startTime = Date.now() + (24 * 60 * 60 * 1000); // 24 hours
+      instance.getRecipe = async () => {};
+      instance.createInterestVector = async () => {
+        return {};
+      };
+      instance.store.get = async () => {
+        return {lastUpdate: startTime};
+      };
+      instance.generateRecipeExecutor = async () => {};
+      sinon.stub(instance.store, "set").returns(Promise.resolve());
+      await instance.init();
+      assert.isFalse(instance.interestVector.lastUpdate > startTime);
+      assert.notCalled(instance.store.set);
+    });
+  });
+  describe("#store", () => {
+    it("should have a personality-provider store", () => {
+      assert.equal(instance.store.name, "personality-provider");
       // The is to make sure prelaod is set to true.
-      assert.equal(!!instance.interestVectorStore._cache, true);
+      assert.equal(!!instance.store._cache, true);
     });
   });
   describe("#remote-settings", () => {
@@ -164,24 +213,25 @@ describe("Personality Provider", () => {
       instance.getRecipeExecutor([], []);
       assert.calledOnce(RecipeExecutorStub);
     });
-    it("should return a recipeExecutor with generateRecipeExecutor", () => {
-      instance.modelKeys = ["nbSports", "nmfSports"];
-      instance.getRecipeExecutor = (nbTaggers, nmfTaggers) => ({nbTaggers, nmfTaggers});
+    it("should pass recipe models to getRecipeExecutor on generateRecipeExecutor", async () => {
+      instance.modelKeys = ["nb_model_sports", "nmf_model_sports"];
+      sinon.stub(instance, "getRecipeExecutor");
 
-      instance.getRemoteSettings = name => {
-        let returnVal = {};
-        if (name === "nbSports") {
-          returnVal = {model_type: "nb"};
-        } else if (name === "nmfSports") {
-          returnVal = {model_type: "nmf", parent_tag: "parent_tag"};
-        }
-        return returnVal;
+      instance.getRemoteSettings = async name => {
+        return [
+          {key: "nb_model_sports", data: {model_type: "nb"}},
+          {key: "nmf_model_sports", data: {model_type: "nmf", parent_tag: "nmf_sports_parent_tag"}}
+        ];
       };
       instance.getNaiveBayesTextTagger = model => model;
       instance.getNmfTextTagger = model => model;
-      const recipeExecutor = instance.generateRecipeExecutor();
-      assert.equal(recipeExecutor.nbTaggers[0].model_type, "nb");
-      assert.equal(recipeExecutor.nmfTaggers.parent_tag.model_type, "nmf");
+      await instance.generateRecipeExecutor();
+      assert.calledOnce(instance.getRecipeExecutor);
+
+      const {args} = instance.getRecipeExecutor.firstCall;
+      assert.equal(args[0][0].model_type, "nb");
+      assert.equal(args[1]["nmf_sports_parent_tag"].model_type, "nmf");
+      assert.equal(args[1]["nmf_sports_parent_tag"].parent_tag, "nmf_sports_parent_tag");
     });
   });
   describe("#recipe", () => {
