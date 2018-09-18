@@ -30,13 +30,14 @@ this.PersonalityProvider = class PersonalityProvider {
     modelKeys) {
     this.modelKeys = modelKeys;
     this.timeSegments = timeSegments;
+    this.parameterSets = parameterSets;
     this.maxHistoryQueryResults = maxHistoryQueryResults;
     this.version = version;
-    this.init();
+    this.scores = scores;
+    this.store = new PersistentCache("personality-provider", true);
   }
 
   async init() {
-    this.store = new PersistentCache("personality-provider", true);
     this.interestConfig = await this.getRecipe();
     this.recipeExecutor = await this.generateRecipeExecutor();
     // FIXME: uncomment this.interestVector = await this.store.get("interest-vector");
@@ -66,6 +67,10 @@ this.PersonalityProvider = class PersonalityProvider {
 
   getNmfTextTagger(model) {
     return new NmfTextTagger(model);
+  }
+
+  getNewTabUtils() {
+    return NewTabUtils;
   }
 
   /**
@@ -115,7 +120,8 @@ this.PersonalityProvider = class PersonalityProvider {
       sql += ` AND ${requiredColumn} <> ""`;
     });
 
-    const history = await NewTabUtils.activityStreamProvider.executePlacesQuery(sql, {
+    const {activityStreamProvider} = this.getNewTabUtils();
+    const history = await activityStreamProvider.executePlacesQuery(sql, {
       columns,
       params: {}
     });
@@ -158,7 +164,7 @@ this.PersonalityProvider = class PersonalityProvider {
    * is populated.
    */
   calculateItemRelevanceScore(pocketItem) {
-    console.log("scoring", pocketItem.url, "((", pocketItem.title, "))");
+    console.log("scoring", pocketItem.url, "((", pocketItem.title, "))", this.interestConfig.item_to_rank_builder);
     let scorableItem = this.recipeExecutor.executeRecipe(pocketItem, this.interestConfig.item_to_rank_builder);
     if (scorableItem === null) {
       return -1;
@@ -186,7 +192,7 @@ this.PersonalityProvider = class PersonalityProvider {
       parameterSets: this.parameterSets,
       maxHistoryQueryResults: this.maxHistoryQueryResults,
       version: this.version,
-      scores: this.scores
+      scores: true
     };
   }
 };
