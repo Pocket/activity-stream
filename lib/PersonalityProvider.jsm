@@ -164,7 +164,7 @@ this.PersonalityProvider = class PersonalityProvider {
    * is populated.
    */
   calculateItemRelevanceScore(pocketItem) {
-    console.log("scoring", pocketItem.url, "((", pocketItem.title, "))");
+    console.log("scoring", pocketItem.url, "((", pocketItem.title, "))", this.interestConfig.item_to_rank_builder);
     let scorableItem = this.recipeExecutor.executeRecipe(pocketItem, this.interestConfig.item_to_rank_builder);
     if (scorableItem === null) {
       return -1;
