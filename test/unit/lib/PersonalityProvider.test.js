@@ -36,7 +36,6 @@ describe("Personality Provider", () => {
   let NaiveBayesTextTaggerStub;
   let NmfTextTaggerStub;
   let RecipeExecutorStub;
-  // let mockHistory;
 
   beforeEach(() => {
     globals = new GlobalOverrider();
@@ -59,31 +58,6 @@ describe("Personality Provider", () => {
     }));
 
     instance = new PersonalityProvider(TIME_SEGMENTS, PARAMETER_SETS);
-
-    /*
-    mockHistory = [
-      {
-        title: "automotive",
-        description: "something about automotive",
-        url: "http://example.com/automotive",
-        frecency: 10
-      },
-      {
-        title: "fashion",
-        description: "something about fashion",
-        url: "http://example.com/fashion",
-        frecency: 5
-      },
-      {
-        title: "tech",
-        description: "something about tech",
-        url: "http://example.com/tech",
-        frecency: 1
-      }
-    ];
-    */
-
-    // NewTabUtils.activityStreamProvider.executePlacesQuery = (a, b) => mockHistory;
 
     instance.interestConfig = {
       history_item_builder: "history_item_builder",
@@ -278,25 +252,53 @@ describe("Personality Provider", () => {
     });
   });
 
-  /*
+
   describe("#createInterestVector", () => {
-    it("should gracefully handle history entries that fail", () => {
+    let mockHistory = [];
+    beforeEach(() => {
+      mockHistory = [
+        {
+          title: "automotive",
+          description: "something about automotive",
+          url: "http://example.com/automotive",
+          frecency: 10
+        },
+        {
+          title: "fashion",
+          description: "something about fashion",
+          url: "http://example.com/fashion",
+          frecency: 5
+        },
+        {
+          title: "tech",
+          description: "something about tech",
+          url: "http://example.com/tech",
+          frecency: 1
+        }
+      ];
+
+      instance.fetchHistory = async () => mockHistory;
+    });
+    afterEach(() => {
+      globals.restore();
+    });
+    it("should gracefully handle history entries that fail", async () => {
       mockHistory.push({title: "fail"});
-      assert.isTrue(instance.createInterestVector() !== null);
+      assert.isNotNull(await instance.createInterestVector());
     });
 
-    it("should fail if the combiner fails", () => {
+    it("should fail if the combiner fails", async () => {
       mockHistory.push({title: "combiner_fail", frecency: 111});
-      let actual = instance.createInterestVector();
-      assert.isTrue(actual === null);
+      let actual = await instance.createInterestVector();
+      assert.isNull(actual);
     });
 
-    it("should process history, combine, and finalize", () => {
-      let actual = instance.createInterestVector();
+    it("should process history, combine, and finalize", async () => {
+      let actual = await instance.createInterestVector();
       assert.equal(actual.score, 1600);
     });
   });
-  */
+
   describe("#calculateItemRelevanceScore", () => {
     it("it should return -1 for busted item", () => {
       assert.equal(instance.calculateItemRelevanceScore({title: "fail"}), -1);
