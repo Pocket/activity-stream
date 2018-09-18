@@ -40,8 +40,7 @@ this.PersonalityProvider = class PersonalityProvider {
   async init() {
     this.interestConfig = await this.getRecipe();
     this.recipeExecutor = await this.generateRecipeExecutor();
-    // FIXME: uncomment this.interestVector = await this.store.get("interest-vector");
-    this.interestVector = undefined;
+    this.interestVector = await this.store.get("interest-vector");
 
     // Fetch a new one if none exists or every set update time.
     if (!this.interestVector ||
