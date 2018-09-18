@@ -171,7 +171,7 @@ this.RecipeExecutor = class RecipeExecutor {
       let nmfTagger = this.nmfTaggers[parentTag];
       if (nmfTagger !== undefined) {
         nestedNmfTags[parentTag] = {};
-        parentWeights[parentTag] = Math.exp(item.nb_tags[parentTag].logProb);
+        parentWeights[parentTag] = item.nb_tags[parentTag];
         let nmfTags = nmfTagger.tagTokens(item.nb_tokens);
         Object.keys(nmfTags).forEach(nmfTag => {
           nestedNmfTags[parentTag][nmfTag] = nmfTags[nmfTag];

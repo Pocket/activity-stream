@@ -25,7 +25,7 @@ class MockTagger {
   }
 }
 
-describe.only("RecipeExecutor", () => {
+describe("RecipeExecutor", () => {
   let makeItem = () => {
     let x = {
       lhs: 2,
@@ -85,7 +85,7 @@ describe.only("RecipeExecutor", () => {
     return x;
   };
 
-  let EPSILON = 0.000001;
+  let EPSILON = 0.00001;
 
   let instance = new RecipeExecutor(
     [new MockTagger("nb", {tag1: 0.70}),
@@ -713,12 +713,12 @@ describe.only("RecipeExecutor", () => {
     });
     it("should scalar multiply a nested map with logrithms", () => {
       item = instance.scalarMultiplyTag(item, {field: "tags", k: 3, log_scale: true});
-      assert.isTrue(Math.abs(item.tags.a.aa - Math.log(0.1 + EPSILON) * 3) <= EPSILON);
-      assert.isTrue(Math.abs(item.tags.a.ab - Math.log(0.2 + EPSILON) * 3) <= EPSILON);
-      assert.isTrue(Math.abs(item.tags.a.ac - Math.log(0.3 + EPSILON) * 3) <= EPSILON);
-      assert.isTrue(Math.abs(item.tags.b.ba - Math.log(4 + EPSILON) * 3) <= EPSILON);
-      assert.isTrue(Math.abs(item.tags.b.bb - Math.log(5 + EPSILON) * 3) <= EPSILON);
-      assert.isTrue(Math.abs(item.tags.b.bc - Math.log(6 + EPSILON) * 3) <= EPSILON);
+      assert.isTrue(Math.abs(item.tags.a.aa - Math.log(0.1 + 0.000001) * 3) <= EPSILON);
+      assert.isTrue(Math.abs(item.tags.a.ab - Math.log(0.2 + 0.000001) * 3) <= EPSILON);
+      assert.isTrue(Math.abs(item.tags.a.ac - Math.log(0.3 + 0.000001) * 3) <= EPSILON);
+      assert.isTrue(Math.abs(item.tags.b.ba - Math.log(4.0 + 0.000001) * 3) <= EPSILON);
+      assert.isTrue(Math.abs(item.tags.b.bb - Math.log(5.0 + 0.000001) * 3) <= EPSILON);
+      assert.isTrue(Math.abs(item.tags.b.bc - Math.log(6.0 + 0.000001) * 3) <= EPSILON);
     });
     it("should fail a string", () => {
       item = instance.scalarMultiplyTag(item, {field: "foo", k: 3});
