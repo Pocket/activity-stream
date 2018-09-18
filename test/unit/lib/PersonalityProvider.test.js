@@ -251,8 +251,6 @@ describe("Personality Provider", () => {
       assert.notCalled(instance.getRemoteSettings);
     });
   });
-
-
   describe("#createInterestVector", () => {
     let mockHistory = [];
     beforeEach(() => {
