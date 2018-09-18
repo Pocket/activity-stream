@@ -569,9 +569,7 @@ describe("Top Stories Feed", () => {
       sinon.stub(instance, "UserDomainAffinityProvider");
       sinon.stub(instance, "PersonalityProvider");
       instance.PersonalityProvider = () => {
-        let retObj = {
-          init: async () => {}
-        };
+        let retObj = {init: async () => {}};
         sinon.stub(retObj, "init").returns(Promise.resolve());
         return retObj;
       };
