@@ -128,7 +128,6 @@ this.TopStoriesFeed = class TopStoriesFeed {
   }
 
   affinityProividerSwitcher(...args) {
-    console.log("switcher");
     let affinityProviderV2 = this._prefs.get("affinityProviderV2");
     if (affinityProviderV2) {
       try {
