@@ -73,9 +73,6 @@ this.TopStoriesFeed = class TopStoriesFeed {
       if (this.topicsLastUpdated === 0) {
         await this.fetchTopics();
       }
-      if (this.domainAffinitiesLastUpdated === 0) {
-        this.updateDomainAffinityScores();
-      }
       this.doContentUpdate(true);
       this.storiesLoaded = true;
 
@@ -135,13 +132,13 @@ this.TopStoriesFeed = class TopStoriesFeed {
     this.dispatchUpdateEvent(shouldBroadcast, updateProps);
   }
 
-  affinityProividerSwitcher(...args) {
+  async affinityProividerSwitcher(...args) {
     console.log("switcher");
     const {affinityProviderV2} = this;
     if (affinityProviderV2 && affinityProviderV2.use_v2) {
       console.log("v2 keys", affinityProviderV2.model_keys);
       const provider = this.PersonalityProvider(...args, affinityProviderV2.model_keys);
-      provider.init();
+      await provider.init();
       return provider;
     }
     return this.UserDomainAffinityProvider(...args);
@@ -193,7 +190,7 @@ this.TopStoriesFeed = class TopStoriesFeed {
 
     let affinities = data.domainAffinities;
     if (this.personalized && affinities && affinities.scores) {
-      this.affinityProvider = this.affinityProividerSwitcher(affinities.timeSegments,
+      this.affinityProvider = await this.affinityProividerSwitcher(affinities.timeSegments,
         affinities.parameterSets, affinities.maxHistoryQueryResults, affinities.version, affinities.scores);
       this.domainAffinitiesLastUpdated = affinities._timestamp;
     }
@@ -282,7 +279,7 @@ this.TopStoriesFeed = class TopStoriesFeed {
     }
   }
 
-  updateDomainAffinityScores() {
+  async updateDomainAffinityScores() {
     if (!this.personalized || !this.domainAffinityParameterSets ||
       Date.now() - this.domainAffinitiesLastUpdated < MIN_DOMAIN_AFFINITIES_UPDATE_TIME) {
       return;
@@ -290,7 +287,7 @@ this.TopStoriesFeed = class TopStoriesFeed {
 
     const start = perfService.absNow();
 
-    this.affinityProvider = this.affinityProividerSwitcher(
+    this.affinityProvider = await this.affinityProividerSwitcher(
       this.timeSegments,
       this.domainAffinityParameterSets,
       this.maxHistoryQueryResults,

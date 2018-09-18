@@ -192,7 +192,7 @@ this.PersonalityProvider = class PersonalityProvider {
       parameterSets: this.parameterSets,
       maxHistoryQueryResults: this.maxHistoryQueryResults,
       version: this.version,
-      scores: this.scores
+      scores: true
     };
   }
 };
