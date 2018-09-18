@@ -28,6 +28,8 @@ for (const type of [
   "ADDONS_INFO_REQUEST",
   "ADDONS_INFO_RESPONSE",
   "ARCHIVE_FROM_POCKET",
+  "AS_ROUTER_INITIALIZED",
+  "AS_ROUTER_PREF_CHANGED",
   "AS_ROUTER_TELEMETRY_USER_EVENT",
   "BLOCK_URL",
   "BOOKMARK_URL",
@@ -118,7 +120,7 @@ for (const type of [
   "UPDATE_SEARCH_SHORTCUTS",
   "UPDATE_SECTION_PREFS",
   "WEBEXT_CLICK",
-  "WEBEXT_DISMISS"
+  "WEBEXT_DISMISS",
 ]) {
   actionTypes[type] = type;
 }
@@ -131,7 +133,7 @@ for (const type of [
   "OPEN_APPLICATIONS_MENU",
   "OPEN_PRIVATE_BROWSER_WINDOW",
   "OPEN_URL",
-  "OPEN_ABOUT_PAGE"
+  "OPEN_ABOUT_PAGE",
 ]) {
   ASRouterActions[type] = type;
 }
@@ -169,7 +171,7 @@ function AlsoToMain(action, fromTarget, skipLocal) {
     from: CONTENT_MESSAGE_TYPE,
     to: MAIN_MESSAGE_TYPE,
     fromTarget,
-    skipLocal
+    skipLocal,
   });
 }
 
@@ -194,7 +196,7 @@ function OnlyToMain(action, fromTarget) {
 function BroadcastToContent(action) {
   return _RouteMessage(action, {
     from: MAIN_MESSAGE_TYPE,
-    to: CONTENT_MESSAGE_TYPE
+    to: CONTENT_MESSAGE_TYPE,
   });
 }
 
@@ -215,7 +217,7 @@ function AlsoToOneContent(action, target, skipMain) {
     from: MAIN_MESSAGE_TYPE,
     to: CONTENT_MESSAGE_TYPE,
     toTarget: target,
-    skipMain
+    skipMain,
   });
 }
 
@@ -240,7 +242,7 @@ function OnlyToOneContent(action, target) {
 function AlsoToPreloaded(action) {
   return _RouteMessage(action, {
     from: MAIN_MESSAGE_TYPE,
-    to: PRELOAD_MESSAGE_TYPE
+    to: PRELOAD_MESSAGE_TYPE,
   });
 }
 
@@ -254,7 +256,7 @@ function AlsoToPreloaded(action) {
 function UserEvent(data) {
   return AlsoToMain({
     type: actionTypes.TELEMETRY_USER_EVENT,
-    data
+    data,
   });
 }
 
@@ -268,7 +270,7 @@ function UserEvent(data) {
 function ASRouterUserEvent(data) {
   return AlsoToMain({
     type: actionTypes.AS_ROUTER_TELEMETRY_USER_EVENT,
-    data
+    data,
   });
 }
 
@@ -282,7 +284,7 @@ function ASRouterUserEvent(data) {
 function UndesiredEvent(data, importContext = globalImportContext) {
   const action = {
     type: actionTypes.TELEMETRY_UNDESIRED_EVENT,
-    data
+    data,
   };
   return importContext === UI_CODE ? AlsoToMain(action) : action;
 }
@@ -297,7 +299,7 @@ function UndesiredEvent(data, importContext = globalImportContext) {
 function PerfEvent(data, importContext = globalImportContext) {
   const action = {
     type: actionTypes.TELEMETRY_PERFORMANCE_EVENT,
-    data
+    data,
   };
   return importContext === UI_CODE ? AlsoToMain(action) : action;
 }
@@ -312,7 +314,7 @@ function PerfEvent(data, importContext = globalImportContext) {
 function ImpressionStats(data, importContext = globalImportContext) {
   const action = {
     type: actionTypes.TELEMETRY_IMPRESSION_STATS,
-    data
+    data,
   };
   return importContext === UI_CODE ? AlsoToMain(action) : action;
 }
@@ -346,7 +348,7 @@ this.actionCreators = {
   OnlyToMain,
   AlsoToPreloaded,
   SetPref,
-  WebExtEvent
+  WebExtEvent,
 };
 
 // These are helpers to test for certain kinds of actions
@@ -392,7 +394,7 @@ this.actionUtils = {
   getPortIdOfSender(action) {
     return (action.meta && action.meta.fromTarget) || null;
   },
-  _RouteMessage
+  _RouteMessage,
 };
 
 const EXPORTED_SYMBOLS = [
@@ -405,5 +407,5 @@ const EXPORTED_SYMBOLS = [
   "BACKGROUND_PROCESS",
   "MAIN_MESSAGE_TYPE",
   "CONTENT_MESSAGE_TYPE",
-  "PRELOAD_MESSAGE_TYPE"
+  "PRELOAD_MESSAGE_TYPE",
 ];

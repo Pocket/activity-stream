@@ -3,8 +3,30 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 "use strict";
 
-const {tokenize} = ChromeUtils.import("resource://activity-stream/lib/TfIdfVectorizer.jsm", {});
+const {tokenize} = ChromeUtils.import("resource://activity-stream/lib/Tokenize.jsm", {});
 
+/**
+ * RecipeExecutor is the core feature engineering pipeline for the in-browser
+ * personalization work. These pipelines are called "recipes". A recipe is an
+ * array of objects that define a "step" in the recipe. A step is simply an
+ * object with a field "function" that specifies what is being done in the step
+ * along with other fields that are semantically defined for that step.
+ *
+ * There are two types of recipes "builder" recipes and "combiner" recipes. Builder
+ * recipes mutate an object until it matches some set of critera. Combiner
+ * recipes take two objects, (a "left" and a "right"), and specify the steps
+ * to merge the right object into the left object.
+ *
+ * A short nonsense example recipe is:
+ * [ {"function": "get_url_domain", "path_length": 1, "field": "url", "dest": "url_domain"},
+ *   {"function": "nb_tag", "fields": ["title", "description"]},
+ *   {"function": "conditionally_nmf_tag", "fields": ["title", "description"]} ]
+ *
+ * Recipes are sandboxed by the fact that the step functions must be explicitly
+ * whitelisted. Functions whitelisted for builder recipes are specifed in the
+ * RecipeExecutor.ITEM_BUILDER_REGISTRY, while combiner functions are whitelisted
+ * in RecipeExecutor.ITEM_COMBINER_REGISTRY .
+ */
 this.RecipeExecutor = class RecipeExecutor {
   constructor(nbTaggers, nmfTaggers) {
     this.ITEM_BUILDER_REGISTRY = {
@@ -30,12 +52,12 @@ this.RecipeExecutor = class RecipeExecutor {
       lookupValue: this.lookupValue,
       copy_to_map: this.copyToMap,
       scalar_multiply_tag: this.scalarMultiplyTag,
-      apply_softmax_tags: this.applySoftmaxTags
+      apply_softmax_tags: this.applySoftmaxTags,
     };
     this.ITEM_COMBINER_REGISTRY = {
       combiner_add: this.combinerAdd,
       combiner_max: this.combinerMax,
-      combiner_collect_values: this.combinerCollectValues
+      combiner_collect_values: this.combinerCollectValues,
     };
     this.nbTaggers = nbTaggers;
     this.nmfTaggers = nmfTaggers;
@@ -51,7 +73,9 @@ this.RecipeExecutor = class RecipeExecutor {
   _typeOf(data) {
     let t = typeof(data);
     if (t === "object") {
-      if (Array.isArray(data)) {
+      if (data === null) {
+        return "null";
+      } if (Array.isArray(data)) {
         return "array";
       }
       return "map";
@@ -60,7 +84,7 @@ this.RecipeExecutor = class RecipeExecutor {
   }
 
   /**
-   * Returns returns a scalar, either by because it was a constant, or by
+   * Returns a scalar, either because it was a constant, or by
    * looking it up from the item. Allows for a default value if the lookup
    * fails.
    */
@@ -86,7 +110,7 @@ this.RecipeExecutor = class RecipeExecutor {
           textArr.push(item[field]);
         } else if (type === "array") {
           for (let ele of item[field]) {
-            textArr.push(ele);
+            textArr.push(String(ele));
           }
         } else {
           textArr.push(String(item[field]));
@@ -127,9 +151,9 @@ this.RecipeExecutor = class RecipeExecutor {
   /**
    * Selectively runs NMF text taggers depending on which tags were found
    * by the naive bayes taggers. Writes the results in into new fields:
-   *  nmf_tags_parent_weights:
-   *  nmf_tags:
-   *  nmf_tags_parent
+   *  nmf_tags_parent_weights:  map of pareent tags to probabilites of those parent tags
+   *  nmf_tags:                 map of strings to maps of strings to probabilities
+   *  nmf_tags_parent           map of child tags to parent tags
    *
    * Config:
    *  Not configurable
@@ -688,8 +712,10 @@ this.RecipeExecutor = class RecipeExecutor {
         norm += datum * datum;
       }
       norm = Math.sqrt(norm);
-      for (let i = 0; i < data.length; i++) {
-        data[i] /= norm;
+      if (norm !== 0) {
+        for (let i = 0; i < data.length; i++) {
+          data[i] /= norm;
+        }
       }
     } else if (type === "map") {
       let norm = 0.0;
@@ -697,9 +723,11 @@ this.RecipeExecutor = class RecipeExecutor {
         norm += data[key] * data[key];
       });
       norm = Math.sqrt(norm);
-      Object.keys(data).forEach(key => {
-        data[key] /= norm;
-      });
+      if (norm !== 0) {
+        Object.keys(data).forEach(key => {
+          data[key] /= norm;
+        });
+      }
     } else {
       return null;
     }
@@ -726,17 +754,21 @@ this.RecipeExecutor = class RecipeExecutor {
       for (let datum of data) {
         norm += datum;
       }
-      for (let i = 0; i < data.length; i++) {
-        data[i] /= norm;
+      if (norm !== 0) {
+        for (let i = 0; i < data.length; i++) {
+          data[i] /= norm;
+        }
       }
     } else if (type === "map") {
       let norm = 0.0;
       Object.keys(item[config.field]).forEach(key => {
         norm += item[config.field][key];
       });
-      Object.keys(item[config.field]).forEach(key => {
-        item[config.field][key] /= norm;
-      });
+      if (norm !== 0) {
+        Object.keys(item[config.field]).forEach(key => {
+          item[config.field][key] /= norm;
+        });
+      }
     } else {
       return null;
     }
@@ -827,7 +859,7 @@ this.RecipeExecutor = class RecipeExecutor {
   }
 
   /**
-   * Independently pplies softmax across all subtags.
+   * Independently applies softmax across all subtags.
    *
    * Config:
    *   field        Points to a map of strings with values being another map of strings

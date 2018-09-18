@@ -25,7 +25,7 @@ describe("Top Stories Feed", () => {
     "api_key_pref": "apiKeyPref",
     "provider_name": "test-provider",
     "provider_icon": "provider-icon",
-    "provider_description": "provider_desc"
+    "provider_description": "provider_desc",
   };
 
   beforeEach(() => {
@@ -34,7 +34,7 @@ describe("Top Stories Feed", () => {
       cta_button: "",
       cta_text: "",
       cta_url: "",
-      use_cta: false
+      use_cta: false,
     });
 
     globals = new GlobalOverrider();
@@ -47,7 +47,7 @@ describe("Top Stories Feed", () => {
       enableSection: sinon.spy(),
       disableSection: sinon.spy(),
       updateSection: sinon.spy(),
-      sections: new Map([["topstories", {options: FAKE_OPTIONS}]])
+      sections: new Map([["topstories", {options: FAKE_OPTIONS}]]),
     };
 
     class FakeUserDomainAffinityProvider {
@@ -73,13 +73,13 @@ describe("Top Stories Feed", () => {
       SPOC_IMPRESSION_TRACKING_PREF,
       REC_IMPRESSION_TRACKING_PREF,
       MIN_DOMAIN_AFFINITIES_UPDATE_TIME,
-      DEFAULT_RECS_EXPIRE_TIME
+      DEFAULT_RECS_EXPIRE_TIME,
     } = injector({
       "lib/ActivityStreamPrefs.jsm": {Prefs: FakePrefs},
       "lib/ShortURL.jsm": {shortURL: shortURLStub},
       "lib/PersonalityProvider.jsm": {PersonalityProvider: FakePersonalityProvider},
       "lib/UserDomainAffinityProvider.jsm": {UserDomainAffinityProvider: FakeUserDomainAffinityProvider},
-      "lib/SectionsManager.jsm": {SectionsManager: sectionsManagerStub}
+      "lib/SectionsManager.jsm": {SectionsManager: sectionsManagerStub},
     }));
 
     instance = new TopStoriesFeed();
@@ -144,8 +144,8 @@ describe("Top Stories Feed", () => {
       sectionsManagerStub.sections.set("topstories", {
         options: {
           "stories_endpoint": "https://somedomain.org/stories?key=$apiKey",
-          "topics_endpoint": "https://somedomain.org/topics?key=$apiKey"
-        }
+          "topics_endpoint": "https://somedomain.org/topics?key=$apiKey",
+        },
       });
       instance.init();
 
@@ -182,7 +182,7 @@ describe("Top Stories Feed", () => {
       const response = {
         "recommendations":  [{"id": "1"}, {"id": "2"}],
         "settings": {"timeSegments": {}, "domainAffinityParameterSets": {}},
-        "spocs": [{"id": "spoc1"}]
+        "spocs": [{"id": "spoc1"}],
       };
 
       instance.show_spocs = true;
@@ -205,7 +205,7 @@ describe("Top Stories Feed", () => {
     it("should get spocs on cache load", async () => {
       instance.cache.get = () => ({
         stories: {recommendations:  [{"id": "1"}, {"id": "2"}]},
-        spocs: [{"id": "spoc1"}]
+        spocs: [{"id": "spoc1"}],
       });
       instance.storiesLastUpdated = 0;
       globals.set("NewTabUtils", {blockedLinks: {isBlocked: () => {}}});
@@ -221,8 +221,8 @@ describe("Top Stories Feed", () => {
       sectionsManagerStub.sections.set("topstories", {
         options: {
           stories_endpoint: "stories-endpoint",
-          stories_referrer: "referrer"
-        }
+          stories_referrer: "referrer",
+        },
       });
       globals.set("fetch", fetchStub);
       globals.set("NewTabUtils", {blockedLinks: {isBlocked: globals.sandbox.spy()}});
@@ -236,8 +236,8 @@ describe("Top Stories Feed", () => {
           "url": "rec-url",
           "published_timestamp": "123",
           "context": "trending",
-          "icon": "icon"
-        }]
+          "icon": "icon",
+        }],
       };
       const stories = [{
         "guid": "1",
@@ -252,7 +252,7 @@ describe("Top Stories Feed", () => {
         "hostname": "rec-url",
         "min_score": 0,
         "score": 1,
-        "spoc_meta": {}
+        "spoc_meta": {},
       }];
 
       instance.cache.set = sinon.spy();
@@ -272,8 +272,8 @@ describe("Top Stories Feed", () => {
       sectionsManagerStub.sections.set("topstories", {
         options: {
           stories_endpoint: "stories-endpoint",
-          stories_referrer: "referrer"
-        }
+          stories_referrer: "referrer",
+        },
       });
       globals.set("fetch", fetchStub);
       globals.set("NewTabUtils", {blockedLinks: {isBlocked: globals.sandbox.spy()}});
@@ -288,8 +288,8 @@ describe("Top Stories Feed", () => {
           "domain": "domain",
           "published_timestamp": "123",
           "context": "trending",
-          "icon": "icon"
-        }]
+          "icon": "icon",
+        }],
       };
       const stories = [{
         "guid": "1",
@@ -304,7 +304,7 @@ describe("Top Stories Feed", () => {
         "hostname": "domain",
         "min_score": 0,
         "score": 1,
-        "spoc_meta": {}
+        "spoc_meta": {},
       }];
 
       instance.cache.set = sinon.spy();
@@ -359,8 +359,8 @@ describe("Top Stories Feed", () => {
         "recommendations": [
           {"published_timestamp": Date.now() / 1000},
           {"published_timestamp": "0"},
-          {"published_timestamp": (Date.now() - 2 * 24 * 60 * 60 * 1000) / 1000}
-        ]
+          {"published_timestamp": (Date.now() - 2 * 24 * 60 * 60 * 1000) / 1000},
+        ],
       };
 
       fetchStub.resolves({ok: true, status: 200, json: () => Promise.resolve(response)});
@@ -380,10 +380,10 @@ describe("Top Stories Feed", () => {
       const response = {"topics": [{"name": "topic1", "url": "url-topic1"}, {"name": "topic2", "url": "url-topic2"}]};
       const topics = [{
         "name": "topic1",
-        "url": "url-topic1"
+        "url": "url-topic1",
       }, {
         "name": "topic2",
-        "url": "url-topic2"
+        "url": "url-topic2",
       }];
 
       instance.cache.set = sinon.spy();
@@ -416,7 +416,7 @@ describe("Top Stories Feed", () => {
     it("should sort stories if personalization is preffed on", async () => {
       const response = {
         "recommendations":  [{"id": "1"}, {"id": "2"}],
-        "settings": {"timeSegments": {}, "domainAffinityParameterSets": {}}
+        "settings": {"timeSegments": {}, "domainAffinityParameterSets": {}},
       };
 
       instance.personalized = true;
@@ -637,7 +637,7 @@ describe("Top Stories Feed", () => {
       const response = {
         "settings": {"spocsPerNewTabs": 0.5},
         "recommendations": [{"guid": "rec1"}, {"guid": "rec2"}, {"guid": "rec3"}],
-        "spocs": [{"id": "spoc1"}, {"id": "spoc2"}]
+        "spocs": [{"id": "spoc1"}, {"id": "spoc2"}],
       };
 
       instance.personalized = true;
@@ -651,7 +651,7 @@ describe("Top Stories Feed", () => {
 
       globals.set("Math", {
         random: () => 0.4,
-        min: Math.min
+        min: Math.min,
       });
       instance.dispatchSpocDone = () => {};
       instance.getPocketState = () => {};
@@ -671,14 +671,14 @@ describe("Top Stories Feed", () => {
       // Second new tab shouldn't trigger a section update event (spocsPerNewTab === 0.5)
       globals.set("Math", {
         random: () => 0.6,
-        min: Math.min
+        min: Math.min,
       });
       instance.onAction({type: at.NEW_TAB_REHYDRATED, meta: {fromTarget: {}}});
       assert.calledOnce(instance.store.dispatch);
 
       globals.set("Math", {
         random: () => 0.3,
-        min: Math.min
+        min: Math.min,
       });
       instance.onAction({type: at.NEW_TAB_REHYDRATED, meta: {fromTarget: {}}});
       assert.calledTwice(instance.store.dispatch);
@@ -698,14 +698,14 @@ describe("Top Stories Feed", () => {
         options: {
           show_spocs: true,
           personalized: true,
-          stories_endpoint: "stories-endpoint"
-        }
+          stories_endpoint: "stories-endpoint",
+        },
       });
       globals.set("fetch", fetchStub);
       globals.set("NewTabUtils", {blockedLinks: {isBlocked: globals.sandbox.spy()}});
       globals.set("Math", {
         random: () => 0.4,
-        min: Math.min
+        min: Math.min,
       });
       instance.getPocketState = () => {};
       instance.dispatchPocketCta = () => {};
@@ -713,7 +713,7 @@ describe("Top Stories Feed", () => {
       const response = {
         "settings": {"spocsPerNewTabs": 0.5},
         "recommendations": [{"id": "rec1"}, {"id": "rec2"}, {"id": "rec3"}],
-        "spocs": [{"id": "spoc1"}, {"id": "spoc2"}]
+        "spocs": [{"id": "spoc1"}, {"id": "spoc2"}],
       };
 
       instance.onAction({type: at.NEW_TAB_REHYDRATED, meta: {fromTarget: {}}});
@@ -737,8 +737,8 @@ describe("Top Stories Feed", () => {
         options: {
           show_spocs: false,
           personalized: true,
-          stories_endpoint: "stories-endpoint"
-        }
+          stories_endpoint: "stories-endpoint",
+        },
       });
       globals.set("fetch", fetchStub);
       globals.set("NewTabUtils", {blockedLinks: {isBlocked: globals.sandbox.spy()}});
@@ -747,7 +747,7 @@ describe("Top Stories Feed", () => {
 
       const response = {
         "settings": {"spocsPerNewTabs": 0.5},
-        "spocs": [{"id": "spoc1"}, {"id": "spoc2"}]
+        "spocs": [{"id": "spoc1"}, {"id": "spoc2"}],
       };
       sinon.spy(instance, "maybeAddSpoc");
       sinon.spy(instance, "shouldShowSpocs");
@@ -781,8 +781,8 @@ describe("Top Stories Feed", () => {
         options: {
           show_spocs: true,
           personalized: true,
-          stories_endpoint: "stories-endpoint"
-        }
+          stories_endpoint: "stories-endpoint",
+        },
       });
       instance.getPocketState = () => {};
       instance.dispatchPocketCta = () => {};
@@ -791,7 +791,7 @@ describe("Top Stories Feed", () => {
 
       const response = {
         "settings": {"spocsPerNewTabs": 0.5},
-        "spocs": [{"id": "spoc1"}, {"id": "spoc2"}]
+        "spocs": [{"id": "spoc1"}, {"id": "spoc2"}],
       };
 
       instance.store.getState = () => ({Sections: [{id: "topstories", rows: response.recommendations}], Prefs: {values: {showSponsored: false}}});
@@ -808,8 +808,8 @@ describe("Top Stories Feed", () => {
         options: {
           show_spocs: true,
           personalized: true,
-          stories_endpoint: "stories-endpoint"
-        }
+          stories_endpoint: "stories-endpoint",
+        },
       });
       instance.getPocketState = () => {};
       instance.dispatchPocketCta = () => {};
@@ -817,12 +817,12 @@ describe("Top Stories Feed", () => {
       globals.set("NewTabUtils", {blockedLinks: {isBlocked: globals.sandbox.spy()}});
       globals.set("Math", {
         random: () => 0.4,
-        min: Math.min
+        min: Math.min,
       });
 
       const response = {
         "settings": {"spocsPerNewTabs": 0.5},
-        "recommendations": [{"id": "rec1"}, {"id": "rec2"}, {"id": "rec3"}]
+        "recommendations": [{"id": "rec1"}, {"id": "rec2"}, {"id": "rec3"}],
       };
 
       fetchStub.resolves({ok: true, status: 200, json: () => Promise.resolve(response)});
@@ -837,12 +837,12 @@ describe("Top Stories Feed", () => {
       globals.set("NewTabUtils", {blockedLinks: {isBlocked: globals.sandbox.spy()}});
       globals.set("Math", {
         random: () => 0.4,
-        min: Math.min
+        min: Math.min,
       });
 
       const response = {
         "settings": {"spocsPerNewTabs": 0.5},
-        "spocs": [{"id": 1, "campaign_id": 5}, {"id": 4, "campaign_id": 6}]
+        "spocs": [{"id": 1, "campaign_id": 5}, {"id": 4, "campaign_id": 6}],
       };
 
       instance._prefs = {get: pref => undefined, set: sinon.spy()};
@@ -871,15 +871,15 @@ describe("Top Stories Feed", () => {
       sectionsManagerStub.sections.set("topstories", {
         options: {
           show_spocs: true,
-          stories_endpoint: "stories-endpoint"
-        }
+          stories_endpoint: "stories-endpoint",
+        },
       });
       globals.set("fetch", fetchStub);
       globals.set("NewTabUtils", {blockedLinks: {isBlocked: globals.sandbox.spy()}});
 
       const response = {
         "settings": {"spocsPerNewTabs": 0.5},
-        "spocs": [{"id": 1, "campaign_id": 5}, {"id": 4, "campaign_id": 6}]
+        "spocs": [{"id": 1, "campaign_id": 5}, {"id": 4, "campaign_id": 6}],
       };
 
       instance._prefs = {get: pref => undefined, set: sinon.spy()};
@@ -906,7 +906,7 @@ describe("Top Stories Feed", () => {
 
       const response = {
         "settings": {"spocsPerNewTabs": 0.5},
-        "spocs": [{"id": 1, "campaign_id": 5}, {"id": 4, "campaign_id": 6}]
+        "spocs": [{"id": 1, "campaign_id": 5}, {"id": 4, "campaign_id": 6}],
       };
       fetchStub.resolves({ok: true, status: 200, json: () => Promise.resolve(response)});
       await instance.fetchStories();
@@ -923,7 +923,7 @@ describe("Top Stories Feed", () => {
       // remove campaign 5 from response
       const updatedResponse = {
         "settings": {"spocsPerNewTabs": 1},
-        "spocs": [{"id": 4, "campaign_id": 6}]
+        "spocs": [{"id": 4, "campaign_id": 6}],
       };
       fetchStub.resolves({ok: true, status: 200, json: () => Promise.resolve(updatedResponse)});
       await instance.fetchStories();
@@ -938,8 +938,8 @@ describe("Top Stories Feed", () => {
         options: {
           show_spocs: true,
           personalized: true,
-          stories_endpoint: "stories-endpoint"
-        }
+          stories_endpoint: "stories-endpoint",
+        },
       });
       instance.getPocketState = () => {};
       instance.dispatchPocketCta = () => {};
@@ -951,8 +951,8 @@ describe("Top Stories Feed", () => {
         "recommendations": [{"guid": "rec1"}, {"guid": "rec2"}, {"guid": "rec3"}],
         "spocs": [
           {"id": "spoc1", "campaign_id": 1, "caps": {"lifetime": 3, "campaign": {"count": 2, "period": 3600}}},
-          {"id": "spoc2", "campaign_id": 2, "caps": {"lifetime": 1}}
-        ]
+          {"id": "spoc2", "campaign_id": 2, "caps": {"lifetime": 1}},
+        ],
       };
 
       instance.store.getState = () => ({Sections: [{id: "topstories", rows: response.recommendations}], Prefs: {values: {showSponsored: true}}});
@@ -1005,8 +1005,8 @@ describe("Top Stories Feed", () => {
         options: {
           show_spocs: true,
           personalized: true,
-          stories_endpoint: "stories-endpoint"
-        }
+          stories_endpoint: "stories-endpoint",
+        },
       });
       globals.set("fetch", fetchStub);
       globals.set("NewTabUtils", {blockedLinks: {isBlocked: globals.sandbox.spy()}});
@@ -1017,8 +1017,8 @@ describe("Top Stories Feed", () => {
         "settings": {"spocsPerNewTabs": 1},
         "recommendations": [{"guid": "rec1"}, {"guid": "rec2"}, {"guid": "rec3"}],
         "spocs": [
-          {"id": "spoc1", "campaign_id": 1, "caps": {"lifetime": 501}}
-        ]
+          {"id": "spoc1", "campaign_id": 1, "caps": {"lifetime": 501}},
+        ],
       };
 
       instance.store.getState = () => ({Sections: [{id: "topstories", rows: response.recommendations}], Prefs: {values: {showSponsored: true}}});
@@ -1057,7 +1057,7 @@ describe("Top Stories Feed", () => {
       instance.stories = [{"guid": "rec1"}, {"guid": "rec2"}, {"guid": "rec3"}];
       instance.topics = {
         "_timestamp": 123,
-        "topics": [{"name": "topic1", "url": "url-topic1"}, {"name": "topic2", "url": "url-topic2"}]
+        "topics": [{"name": "topic1", "url": "url-topic1"}, {"name": "topic2", "url": "url-topic2"}],
       };
       await instance.onAction({type: at.SYSTEM_TICK});
       assert.calledOnce(instance.dispatchUpdateEvent);
@@ -1065,9 +1065,9 @@ describe("Top Stories Feed", () => {
         rows: [{"guid": "rec1"}, {"guid": "rec2"}, {"guid": "rec3"}],
         topics: {
           _timestamp: 123,
-          topics: [{"name": "topic1", "url": "url-topic1"}, {"name": "topic2", "url": "url-topic2"}]
+          topics: [{"name": "topic1", "url": "url-topic1"}, {"name": "topic2", "url": "url-topic2"}],
         },
-        read_more_endpoint: undefined
+        read_more_endpoint: undefined,
       });
     });
     it("should update domain affinities on idle-daily, if personalization preffed on", () => {
@@ -1174,8 +1174,8 @@ describe("Top Stories Feed", () => {
           "published_timestamp": "123",
           "context": "trending",
           "icon": "icon",
-          "item_score": 0.98
-        }]
+          "item_score": 0.98,
+        }],
       };
       const transformedStories = [{
         "guid": "1",
@@ -1190,11 +1190,11 @@ describe("Top Stories Feed", () => {
         "hostname": "rec-url",
         "min_score": 0,
         "score": 0.98,
-        "spoc_meta": {}
+        "spoc_meta": {},
       }];
       const topics = {
         "_timestamp": 123,
-        "topics": [{"name": "topic1", "url": "url-topic1"}, {"name": "topic2", "url": "url-topic2"}]
+        "topics": [{"name": "topic1", "url": "url-topic1"}, {"name": "topic2", "url": "url-topic2"}],
       };
       instance.cache.get = () => ({stories, topics});
       globals.set("NewTabUtils", {blockedLinks: {isBlocked: globals.sandbox.spy()}});
@@ -1230,13 +1230,13 @@ describe("Top Stories Feed", () => {
             "perfectFrequencyVisits": 10,
             "perfectCombinedDomainScore": 2,
             "multiDomainBoost": 0.1,
-            "itemScoreFactor": 0
-          }
+            "itemScoreFactor": 0,
+          },
         },
         "scores": {"a.com": 1, "b.com": 0.9},
         "maxHistoryQueryResults": 1000,
         "timeSegments": {},
-        "version": "v1"
+        "version": "v1",
       };
 
       instance.affinityProvider = undefined;
@@ -1287,7 +1287,7 @@ describe("Top Stories Feed", () => {
         cta_button: "",
         cta_text: "",
         cta_url: "",
-        use_cta: false
+        use_cta: false,
       }), false);
     });
     it("should call dispatch in dispatchPocketCta", () => {
@@ -1307,16 +1307,16 @@ describe("Top Stories Feed", () => {
             cta_button: "",
             cta_text: "",
             cta_url: "",
-            use_cta: false
-          })
-        }
+            use_cta: false,
+          }),
+        },
       });
       assert.calledOnce(instance.dispatchPocketCta);
       assert.calledWith(instance.dispatchPocketCta, JSON.stringify({
         cta_button: "",
         cta_text: "",
         cta_url: "",
-        use_cta: false
+        use_cta: false,
       }), true);
     });
   });
