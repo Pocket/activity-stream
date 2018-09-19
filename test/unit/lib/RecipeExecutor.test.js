@@ -514,7 +514,7 @@ describe("RecipeExecutor", () => {
     });
   });
 
-  describe.only("#scalarAdd", () => {
+  describe("#scalarAdd", () => {
     it("should error for a missing field", () => {
       item = instance.scalarAdd(item, {field: "missing", k: 10});
       assert.equal(item, null);

@@ -130,9 +130,9 @@ this.TopStoriesFeed = class TopStoriesFeed {
     console.log("switcher");
     const {affinityProviderV2} = this;
     if (affinityProviderV2.use_v2 !== null) {
-      console.log('affinityProviderV2 not null and useV2 is', affinityProviderV2.use_v2);
+      console.log("affinityProviderV2 not null and useV2 is", affinityProviderV2.use_v2);
     } else {
-      console.log('affinityProviderV2 is null')
+      console.log("affinityProviderV2 is null");
     }
     if (affinityProviderV2 && affinityProviderV2.use_v2) {
       console.log("v2 keys", affinityProviderV2.model_keys);
