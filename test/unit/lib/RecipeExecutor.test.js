@@ -142,9 +142,9 @@ describe("RecipeExecutor", () => {
       item = instance.naiveBayesTag(item, {fields: ["text"]});
       assert.isTrue("nb_tags" in item);
       assert.isTrue(!("tag1" in item.nb_tags));
-      assert.equal(item.nb_tags_extended.tag2, 0.86);
-      assert.equal(item.nb_tags_extended.tag3, 0.90);
-      assert.equal(item.nb_tags_extended.tag5, 0.90);
+      assert.equal(item.nb_tags.tag2, 0.86);
+      assert.equal(item.nb_tags.tag3, 0.90);
+      assert.equal(item.nb_tags.tag5, 0.90);
       assert.isTrue("nb_tokens" in item);
       assert.deepEqual(item.nb_tokens, ["this", "is", "a", "sentence"]);
       assert.isTrue("nb_tags_extended" in item);
@@ -152,17 +152,17 @@ describe("RecipeExecutor", () => {
       assert.deepEqual(item.nb_tags_extended.tag2, {
         label: "tag2",
         logProb: Math.log(0.86),
-        confident: true
+        confident: true,
       });
       assert.deepEqual(item.nb_tags_extended.tag3, {
         label: "tag3",
         logProb: Math.log(0.90),
-        confident: true
+        confident: true,
       });
       assert.deepEqual(item.nb_tags_extended.tag5, {
         label: "tag5",
         logProb: Math.log(0.90),
-        confident: true
+        confident: true,
       });
       assert.isTrue("nb_tokens" in item);
       assert.deepEqual(item.nb_tokens, ["this", "is", "a", "sentence"]);
@@ -403,7 +403,7 @@ describe("RecipeExecutor", () => {
     it("should promote up nested fields", () => {
       item = instance.keepTopK(item, {field: "tags", k: 2});
       assert.equal(Object.keys(item.tags).length, 2);
-      assert.deepEqual(item.tag, {bb: 5, bc: 6});
+      assert.deepEqual(item.tags, {bb: 5, bc: 6});
     });
     it("should error for a missing field", () => {
       item = instance.keepTopK(item, {field: "missing", k: 3});
