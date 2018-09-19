@@ -538,6 +538,7 @@ this.RecipeExecutor = class RecipeExecutor {
   scalarAdd(item, config) {
     let k = this._lookupScalar(item, config.k, config.default);
     if (!(config.field in item)) {
+      console.log("in scalarAdd, 1 null: !", config.field, "in", item);
       return null;
     }
 
@@ -551,6 +552,7 @@ this.RecipeExecutor = class RecipeExecutor {
         item[config.field][key] += k;
       });
     } else {
+      console.log("in scalarAdd, 2 null:", fieldType);
       return null;
     }
 
@@ -1070,6 +1072,9 @@ this.RecipeExecutor = class RecipeExecutor {
       }
       newItem = op.call(this, newItem, step);
       if (newItem === null) {
+        console.log(newItem, step);
+        console.log("execute recipe:", step.function, this.ITEM_BUILDER_REGISTRY);
+        console.log("returning null!!!!!!!!!!!!!!!!!!!!!!!!!!!");
         break;
       }
     }
