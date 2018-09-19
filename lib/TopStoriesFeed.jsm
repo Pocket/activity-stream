@@ -64,7 +64,7 @@ this.TopStoriesFeed = class TopStoriesFeed {
       // Cache is used for new page loads, which shouldn't have changed data.
       // If we have changed data, cache should be cleared,
       // and last updated should be 0, and we can fetch.
-      // await this.loadCachedData();
+      await this.loadCachedData();
       if (this.storiesLastUpdated === 0) {
         await this.fetchStories();
       }
@@ -139,7 +139,9 @@ this.TopStoriesFeed = class TopStoriesFeed {
       try {
         this.affinityProviderV2 = JSON.parse(affinityProviderV2);
         if (this.affinityProviderV2 && this.affinityProviderV2.use_v2) {
-          return this.PersonalityProvider(...args, this.affinityProviderV2.model_keys);
+          const provider = this.PersonalityProvider(...args, this.affinityProviderV2.model_keys);
+          provider.init();
+          return provider;
         }
       } catch (e) {
         Cu.reportError(`Problem initializing affinity provider v2: ${e.message}`);
