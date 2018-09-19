@@ -89,10 +89,10 @@ this.TopStoriesFeed = class TopStoriesFeed {
     SectionsManager.onceInitialized(this.onInit.bind(this));
   }
 
-  observe(subject, topic, data) {
+  async observe(subject, topic, data) {
     switch (topic) {
       case "idle-daily":
-        this.updateDomainAffinityScores();
+        await this.updateDomainAffinityScores();
         break;
     }
   }

@@ -635,6 +635,31 @@ describe("Top Stories Feed", () => {
       await instance.loadCachedData();
       assert.notEqual(instance.domainAffinitiesLastUpdated, 0);
     });
+    it("should return false and do nothing if v2 already set", () => {
+      instance.affinityProviderV2 = {use_v2: true, model_keys: ["item1orig"]};
+      const result = instance.processAffinityProividerVersion({version: 2, model_keys: ["item1"]});
+      assert.isTrue(instance.affinityProviderV2.use_v2);
+      assert.isFalse(result);
+      assert.equal(instance.affinityProviderV2.model_keys[0], "item1orig");
+    });
+    it("should return false and do nothing if v1 already set", () => {
+      instance.affinityProviderV2 = null;
+      const result = instance.processAffinityProividerVersion({version: 1});
+      assert.isFalse(result);
+      assert.isNull(instance.affinityProviderV2);
+    });
+    it("should return true and set v2", () => {
+      const result = instance.processAffinityProividerVersion({version: 2, model_keys: ["item1"]});
+      assert.isTrue(instance.affinityProviderV2.use_v2);
+      assert.isTrue(result);
+      assert.equal(instance.affinityProviderV2.model_keys[0], "item1");
+    });
+    it("should return true and set v1", () => {
+      instance.affinityProviderV2 = {};
+      const result = instance.processAffinityProividerVersion({version: 1});
+      assert.isTrue(result);
+      assert.isNull(instance.affinityProviderV2);
+    });
   });
   describe("#spocs", async () => {
     it("should insert spoc with provided probability", async () => {
@@ -1078,7 +1103,7 @@ describe("Top Stories Feed", () => {
         read_more_endpoint: undefined,
       });
     });
-    it("should update domain affinities on idle-daily, if personalization preffed on", () => {
+    it("should update domain affinities on idle-daily, if personalization preffed on", async () => {
       instance.init();
       instance.affinityProvider = undefined;
       instance.cache.set = sinon.spy();
@@ -1089,7 +1114,7 @@ describe("Top Stories Feed", () => {
       instance.personalized = true;
       instance.updateSettings({timeSegments: {}, domainAffinityParameterSets: {}});
       clock.tick(MIN_DOMAIN_AFFINITIES_UPDATE_TIME);
-      instance.observe("", "idle-daily");
+      await instance.observe("", "idle-daily");
       assert.isDefined(instance.affinityProvider);
       assert.calledOnce(instance.cache.set);
       assert.calledWith(instance.cache.set, "domainAffinities",
@@ -1107,14 +1132,14 @@ describe("Top Stories Feed", () => {
       instance.observe("", "idle-daily");
       assert.isUndefined(instance.affinityProvider);
     });
-    it("should send performance telemetry when updating domain affinities", () => {
+    it("should send performance telemetry when updating domain affinities", async () => {
       instance.getPocketState = () => {};
       instance.dispatchPocketCta = () => {};
       instance.init();
       instance.personalized = true;
       clock.tick(MIN_DOMAIN_AFFINITIES_UPDATE_TIME);
       instance.updateSettings({timeSegments: {}, domainAffinityParameterSets: {}});
-      instance.observe("", "idle-daily");
+      await instance.observe("", "idle-daily");
 
       assert.calledOnce(instance.store.dispatch);
       let [action] = instance.store.dispatch.firstCall.args;
@@ -1155,13 +1180,13 @@ describe("Top Stories Feed", () => {
 
       assert.deepEqual(instance.spocs, [{"url": "not_blocked"}]);
     });
-    it("should reset domain affinity scores if version changed", () => {
+    it("should reset domain affinity scores if version changed", async () => {
       instance.init();
       instance.personalized = true;
       instance.resetDomainAffinityScores = sinon.spy();
       instance.updateSettings({timeSegments: {}, domainAffinityParameterSets: {}, version: "1"});
       clock.tick(MIN_DOMAIN_AFFINITIES_UPDATE_TIME);
-      instance.observe("", "idle-daily");
+      await instance.observe("", "idle-daily");
       assert.notCalled(instance.resetDomainAffinityScores);
 
       instance.updateSettings({timeSegments: {}, domainAffinityParameterSets: {}, version: "2"});
