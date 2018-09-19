@@ -514,7 +514,7 @@ describe("RecipeExecutor", () => {
     });
   });
 
-  describe("#scalarAdd", () => {
+  describe.only("#scalarAdd", () => {
     it("should error for a missing field", () => {
       item = instance.scalarAdd(item, {field: "missing", k: 10});
       assert.equal(item, null);
@@ -522,6 +522,10 @@ describe("RecipeExecutor", () => {
     it("should error for strings", () => {
       item = instance.scalarAdd(item, {field: "foo", k: 10});
       assert.equal(item, null);
+    });
+    it("should work for numbers", () => {
+      item = instance.scalarAdd(item, {field: "one", k: 10});
+      assert.equal(item.one, 11);
     });
     it("should add a constant to every cell on a map", () => {
       item = instance.scalarAdd(item, {field: "map", k: 10});

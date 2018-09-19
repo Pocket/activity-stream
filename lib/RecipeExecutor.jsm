@@ -551,6 +551,8 @@ this.RecipeExecutor = class RecipeExecutor {
       Object.keys(item[config.field]).forEach(key => {
         item[config.field][key] += k;
       });
+    } else if (fieldType === "number") {
+      item[config.field] += k;
     } else {
       console.log("in scalarAdd, 2 null:", fieldType);
       return null;

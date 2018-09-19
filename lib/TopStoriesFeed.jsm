@@ -16,12 +16,6 @@ const {UserDomainAffinityProvider} = ChromeUtils.import("resource://activity-str
 const {PersonalityProvider} = ChromeUtils.import("resource://activity-stream/lib/PersonalityProvider.jsm", {});
 const {PersistentCache} = ChromeUtils.import("resource://activity-stream/lib/PersistentCache.jsm", {});
 
-/* Not yet using personalization v2 taggers
-const {NaiveBayesTextTagger} = ChromeUtils.import("resource://activity-stream/lib/NaiveBayesTextTagger.jsm", {});
-const {NmfTextTagger} = ChromeUtils.import("resource://activity-stream/lib/NmfTextTagger.jsm", {});
-const {RecipeExecutor} = ChromeUtils.import("resource://activity-stream/lib/RecipeExecutor.jsm", {});
-*/
-
 ChromeUtils.defineModuleGetter(this, "perfService", "resource://activity-stream/common/PerfService.jsm");
 ChromeUtils.defineModuleGetter(this, "pktApi", "chrome://pocket/content/pktApi.jsm");
 
@@ -135,6 +129,11 @@ this.TopStoriesFeed = class TopStoriesFeed {
   async affinityProividerSwitcher(...args) {
     console.log("switcher");
     const {affinityProviderV2} = this;
+    if (affinityProviderV2.use_v2 !== null) {
+      console.log('affinityProviderV2 not null and useV2 is', affinityProviderV2.use_v2);
+    } else {
+      console.log('affinityProviderV2 is null')
+    }
     if (affinityProviderV2 && affinityProviderV2.use_v2) {
       console.log("v2 keys", affinityProviderV2.model_keys);
       const provider = this.PersonalityProvider(...args, affinityProviderV2.model_keys);
