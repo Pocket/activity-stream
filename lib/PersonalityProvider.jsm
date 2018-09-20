@@ -163,22 +163,17 @@ this.PersonalityProvider = class PersonalityProvider {
    * is populated.
    */
   calculateItemRelevanceScore(pocketItem) {
-    console.log("scoring", pocketItem.url, "((", pocketItem.title, "))", this.interestConfig.item_to_rank_builder);
     let scorableItem = this.recipeExecutor.executeRecipe(pocketItem, this.interestConfig.item_to_rank_builder);
     if (scorableItem === null) {
       return -1;
     }
     let rankingVector = JSON.parse(JSON.stringify(this.interestVector));
-    console.log("first:", rankingVector);
     Object.keys(scorableItem).forEach(key => {
       rankingVector[key] = scorableItem[key];
     });
-    console.log("second:", rankingVector);
     rankingVector = this.recipeExecutor.executeRecipe(rankingVector, this.interestConfig.item_ranker);
 
-    console.log("third:", rankingVector);
     if (rankingVector === null) {
-      console.log("ERROR !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
       return -1;
     }
     console.log("scored", rankingVector.score);
