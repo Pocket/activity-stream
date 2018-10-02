@@ -61,9 +61,15 @@ this.PersonalityProvider = class PersonalityProvider {
     this.initialized = true;
   }
 
-  async getFromRemoteSettings(name) {
-    const result = await RemoteSettings(name).get();
-    return result || [];
+  async getFromCacheOrRemoteSettings(name) {
+    let result = await this.store.get(name);
+    if (!result || !result.length ||
+      (Date.now() - result.lastUpdate) >= STORE_UPDATE_TIME) {
+      result = await RemoteSettings(name).get();
+      result.lastUpdate = Date.now();
+      this.store.set(name, result);
+    }
+    return result;
   }
 
   /**
@@ -71,10 +77,8 @@ this.PersonalityProvider = class PersonalityProvider {
    * A Recipe is a set of instructions on how to processes a RecipeExecutor.
    */
   async getRecipe() {
-    if (!this.recipe) {
-      this.recipe = await this.getFromRemoteSettings("personality-provider-recipe");
-    }
-    return this.recipe[0];
+    const recipe = await this.getFromCacheOrRemoteSettings("personality-provider-recipe");
+    return recipe[0];
   }
 
   /**
@@ -85,7 +89,7 @@ this.PersonalityProvider = class PersonalityProvider {
   async generateRecipeExecutor() {
     let nbTaggers = [];
     let nmfTaggers = {};
-    const models = await this.getFromRemoteSettings("personality-provider-models");
+    const models = await this.getFromCacheOrRemoteSettings("personality-provider-models");
 
     if (models.length === 0) {
       return null;
