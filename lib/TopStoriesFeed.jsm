@@ -41,6 +41,7 @@ this.TopStoriesFeed = class TopStoriesFeed {
   async onInit() {
     SectionsManager.enableSection(SECTION_ID);
     try {
+      console.log("In init ++++++++++++++++++++++++++");
       const {options} = SectionsManager.sections.get(SECTION_ID);
       const apiKey = this.getApiKeyFromPref(options.api_key_pref);
       this.stories_endpoint = this.produceFinalEndpointUrl(options.stories_endpoint, apiKey);
@@ -125,14 +126,38 @@ this.TopStoriesFeed = class TopStoriesFeed {
     this.dispatchUpdateEvent(shouldBroadcast, updateProps);
   }
 
+  profileResults(title, version, time) {
+    console.log(" ");
+    console.log("========================");
+    console.log("PROFILE RESULTS FOR:", title);
+    console.log("v:", version);
+    console.log("t (in ms):", time);
+    console.log("t (in s):", time / 1000);
+    console.log("========================");
+  }
+
   async affinityProividerSwitcher(...args) {
+    // Profile this stuff v1 and v2
     const {affinityProviderV2} = this;
+    let version = 1;
+    let time = 0;
+    let start = 0;
     if (affinityProviderV2 && affinityProviderV2.use_v2) {
+      version = 2;
+      start = Date.now();
       const provider = this.PersonalityProvider(...args, affinityProviderV2.model_keys);
       await provider.init();
+      time = Date.now() - start;
+
+      this.profileResults("affinityProividerSwitcher and init", version, time);
       return provider;
     }
-    return this.UserDomainAffinityProvider(...args);
+    start = Date.now();
+    const providerv1 = this.UserDomainAffinityProvider(...args);
+    time = Date.now() - start;
+
+    this.profileResults("affinityProividerSwitcher and init", version, time);
+    return providerv1;
   }
 
   PersonalityProvider(...args) {
@@ -198,12 +223,39 @@ this.TopStoriesFeed = class TopStoriesFeed {
     }
   }
 
+  profileCalculateItemRelevanceScore(s, profileResults) {
+
+    // Profile calculateItemRelevanceScore v1 and v2
+
+    let time = 0;
+    let start = 0;
+    start = Date.now();
+
+    const result = this.affinityProvider.calculateItemRelevanceScore(s);
+
+    time = Date.now() - start;
+
+    profileResults.time += time;
+
+    return result;
+  }
+
   transform(items) {
     if (!items) {
       return [];
     }
 
-    return items
+    const {affinityProviderV2} = this;
+    let version = 1;
+    if (affinityProviderV2 && affinityProviderV2.use_v2) {
+      version = 2;
+    }
+
+    let profileResults = {
+      time: 0,
+    };
+
+    const result = items
       .filter(s => !NewTabUtils.blockedLinks.isBlocked({"url": s.url}))
       .map(s => ({
         "guid": s.id,
@@ -217,10 +269,14 @@ this.TopStoriesFeed = class TopStoriesFeed {
         "referrer": this.stories_referrer,
         "url": s.url,
         "min_score": s.min_score || 0,
-        "score": this.personalized && this.affinityProvider ? this.affinityProvider.calculateItemRelevanceScore(s) : s.item_score || 1,
+        "score": this.personalized && this.affinityProvider ? this.profileCalculateItemRelevanceScore(s, profileResults) : s.item_score || 1,
         "spoc_meta": this.show_spocs ? {campaign_id: s.campaign_id, caps: s.caps} : {},
       }))
       .sort(this.personalized ? this.compareScore : (a, b) => 0);
+
+    this.profileResults("profileCalculateItemRelevanceScore", version, profileResults.time);
+
+    return result;
   }
 
   async fetchTopics() {
@@ -552,6 +608,7 @@ this.TopStoriesFeed = class TopStoriesFeed {
   async onAction(action) {
     switch (action.type) {
       case at.INIT:
+        console.log("third init call");
         this.init();
         break;
       case at.SYSTEM_TICK:
@@ -575,6 +632,7 @@ this.TopStoriesFeed = class TopStoriesFeed {
         if (action.data === SECTION_ID) {
           await this.clearCache();
           this.uninit();
+          console.log("second init call");
           this.init();
         }
         break;
@@ -622,6 +680,7 @@ this.TopStoriesFeed = class TopStoriesFeed {
             if (this.processAffinityProividerVersion(options)) {
               await this.clearCache();
               this.uninit();
+              console.log("first init call");
               this.init();
             }
           } catch (e) {

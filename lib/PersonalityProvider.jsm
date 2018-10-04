@@ -37,26 +37,56 @@ this.PersonalityProvider = class PersonalityProvider {
     this.store = new PersistentCache("personality-provider", true);
   }
 
+  profileResults(title, version, time) {
+    console.log(" ");
+    console.log("========================");
+    console.log("PROFILE RESULTS FOR:", title);
+    console.log("v:", version);
+    console.log("t (in ms):", time);
+    console.log("t (in s):", time / 1000);
+    console.log("========================");
+  }
+
   async init() {
+
+    let time = 0;
+    let start = 0;
+    let version = 2;
+
+    start = Date.now();
     this.interestConfig = await this.getRecipe();
     if (!this.interestConfig) {
       return;
     }
+
+    time = Date.now() - start;
+    this.profileResults("get recipe", version, time);
+
+    start = Date.now();
     this.recipeExecutor = await this.generateRecipeExecutor();
+    console.log(this.recipeExecutor);
     if (!this.recipeExecutor) {
       return;
     }
-    this.interestVector = await this.store.get("interest-vector");
+
+    time = Date.now() - start;
+    this.profileResults("generate recipe executor", version, time);
+
+    //this.interestVector = await this.store.get("interest-vector");
 
     // Fetch a new one if none exists or every set update time.
     if (!this.interestVector ||
       (Date.now() - this.interestVector.lastUpdate) >= STORE_UPDATE_TIME) {
+      start = Date.now();
       this.interestVector = await this.createInterestVector();
       if (!this.interestVector) {
         return;
       }
       this.interestVector.lastUpdate = Date.now();
       this.store.set("interest-vector", this.interestVector);
+
+      time = Date.now() - start;
+      this.profileResults("createInterestVector no cache", version, time);
     }
     this.initialized = true;
   }
@@ -85,24 +115,75 @@ this.PersonalityProvider = class PersonalityProvider {
   async generateRecipeExecutor() {
     let nbTaggers = [];
     let nmfTaggers = {};
-    const models = await this.getFromRemoteSettings("personality-provider-models");
+    const version = 2;
+    let time = 0;
+    let start = 0;
+    let loopStart = 0;
+    let rsStart = 0;
+    let cacheStart = 0;
+    let profileResults = {
+      reTime: 0,
+      nbTime: 0,
+      nmfTime: 0,
+      loopTime: 0,
+      rsTime: 0,
+      cacheTime: 0,
+    };
+
+    cacheStart = Date.now();
+    let models = await this.store.get("personality-provider-models");
+    //let models;
+    time = Date.now() - cacheStart;
+    profileResults.cacheTime = time;
+
+
+    if (!models) {
+      rsStart = Date.now();
+      models = await this.getFromRemoteSettings("personality-provider-models");
+      time = Date.now() - rsStart;
+      profileResults.rsTime = time;
+      this.store.set("personality-provider-models", models);
+    }
 
     if (models.length === 0) {
       return null;
     }
 
+    loopStart = Date.now();
     for (let model of models) {
       if (!model || !this.modelKeys.includes(model.key)) {
         continue;
       }
 
       if (model.data.model_type === "nb") {
+        start = Date.now();
         nbTaggers.push(new NaiveBayesTextTagger(model.data));
+        time = Date.now() - start;
+        profileResults.nbTime += time;
       } else if (model.data.model_type === "nmf") {
+        start = Date.now();
         nmfTaggers[model.data.parent_tag] = new NmfTextTagger(model.data);
+        time = Date.now() - start;
+        profileResults.nmfTime += time;
       }
     }
-    return new RecipeExecutor(nbTaggers, nmfTaggers);
+    time = Date.now() - loopStart;
+    profileResults.loopTime = time;
+
+
+    start = Date.now();
+
+    const result = new RecipeExecutor(nbTaggers, nmfTaggers);
+    time = Date.now() - start;
+    profileResults.reTime = time;
+
+    this.profileResults("nb", version, profileResults.nbTime);
+    this.profileResults("nmf", version, profileResults.nmfTime);
+    this.profileResults("new RecipeExecutor", version, profileResults.reTime);
+    this.profileResults("loop time", version, profileResults.loopTime);
+    this.profileResults("getFromRemoteSettings", version, profileResults.rsTime);
+    this.profileResults("cache get for personality-provider-models", version, profileResults.cacheTime);
+    return result;
   }
 
   /**
@@ -136,6 +217,8 @@ this.PersonalityProvider = class PersonalityProvider {
     let endTimeSecs = ((new Date()).getTime() / 1000);
     let beginTimeSecs = endTimeSecs - this.interestConfig.history_limit_secs;
     let history = await this.fetchHistory(this.interestConfig.history_required_fields, beginTimeSecs, endTimeSecs);
+
+    console.log("history length:", history.length);
 
     for (let historyRec of history) {
       let ivItem = this.recipeExecutor.executeRecipe(historyRec, this.interestConfig.history_item_builder);
